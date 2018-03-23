@@ -14,6 +14,7 @@ import torch.nn.functional as F
 
 import os
 import time
+import re
 
 import options
 import data
@@ -35,7 +36,7 @@ options.add_optimization_args(parser)
 options.add_checkpoint_args(parser, inference=False)
 options.add_model_args(parser)
 
-def main(args):
+def train_g(args):
     use_cuda = (len(args.gpuid) >= 1)
     if args.gpuid:
         cuda.set_device(args.gpuid[0])
@@ -44,6 +45,12 @@ def main(args):
     if not os.path.exists('checkpoints/generator'):
         os.makedirs('checkpoints/ganerator')
 
+    # list all checkpoints folders
+    os.listdir('checkpoints/ganerator')
+    # decide the number of the current checkpoint
+    
+
+    # create a new folder
     checkpoints_path = './checkpoints/ganerator/' + time.ctime() + '/'
 
 
@@ -212,9 +219,3 @@ def update_learning_rate(current_epoch, lr_shrink, lr_shrink_from, optimizer):
         for param_group in optimizer.param_groups:
             param_group['lr'] *= lr_shrink
 
-if __name__ == "__main__":
-    ret = parser.parse_known_args()
-    args = ret[0]
-    if ret[1]:
-        logging.warning("unknown arguments: {0}".format(parser.parse_known_args()[1]))
-    main(args)
