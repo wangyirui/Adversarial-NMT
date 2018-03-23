@@ -76,9 +76,10 @@ def add_optimization_args(parser):
     return parser
 
 
-def add_checkpoint_args(parser):
-    parser.add_argument("--model_file", required=True,
-                        help="Location to dump the models.")
+def add_checkpoint_args(parser, inference=False):
+    if inference:
+        parser.add_argument("--model_file", required=True,
+                            help="Location to dump the models.")
     return parser
 
 def add_model_args(parser):

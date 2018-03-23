@@ -7,7 +7,7 @@ import logging
 import torch
 from torch import cuda
 from torch.autograd import Variable
-from model import NMT
+from generator import NMT
 import options
 import data
 from meters import AverageMeter
@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description="Driver program for JHU Adversarial
 # Load args
 options.add_general_args(parser)
 options.add_dataset_args(parser)
-options.add_checkpoint_args(parser)
+options.add_checkpoint_args(parser, inference=True)
 options.add_distributed_training_args(parser)
 
 
