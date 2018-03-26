@@ -241,7 +241,9 @@ class LanguagePairDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False):
-        size = max(v.size(0) for v in values)
+        # size = max(v.size(0) for v in values)
+        # use fixed size 50
+        size = 50
         res = values[0].new(len(values), size).fill_(pad_idx)
 
         def copy_tensor(src, dst):

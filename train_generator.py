@@ -2,41 +2,23 @@
 import argparse
 import dill
 import logging
-import numpy as np
 import math
+import os
 from collections import OrderedDict
 
 import torch
-import torch.nn as nn
 from torch import cuda
-from torch.autograd import Variable
-import torch.nn.functional as F
 
-import os
-import time
-import re
-
-import options
 import data
 from meters import AverageMeter
 from generator import NMT
 
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
+def train_g(args, dataset):
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
 
-parser = argparse.ArgumentParser(description="Driver program for JHU Adversarial-NMT.")
-
-# Load args
-options.add_general_args(parser)
-options.add_dataset_args(parser)
-options.add_distributed_training_args(parser)
-options.add_optimization_args(parser)
-options.add_checkpoint_args(parser, inference=False)
-options.add_model_args(parser)
-
-def train_g(args):
     use_cuda = (len(args.gpuid) >= 1)
     if args.gpuid:
         cuda.set_device(args.gpuid[0])
@@ -45,30 +27,7 @@ def train_g(args):
     if not os.path.exists('checkpoints/generator'):
         os.makedirs('checkpoints/ganerator')
 
-    # list all checkpoints folders
-    os.listdir('checkpoints/ganerator')
-    # decide the number of the current checkpoint
-    
-
-    # create a new folder
-    checkpoints_path = './checkpoints/ganerator/' + time.ctime() + '/'
-
-
-    # Load dataset
-    splits = ['train', 'valid']
-    if data.has_binary_files(args.data, splits):
-        dataset = data.load_dataset(
-            args.data, splits, args.src_lang, args.trg_lang)
-    else:
-        dataset = data.load_raw_text_dataset(
-            args.data, splits, args.src_lang, args.trg_lang)
-    if args.src_lang is None or args.trg_lang is None:
-        # record inferred languages in args, so that it's saved in checkpoints
-        args.src_lang, args.trg_lang = dataset.src, dataset.dst
-    print('| [{}] dictionary: {} types'.format(dataset.src, len(dataset.src_dict)))
-    print('| [{}] dictionary: {} types'.format(dataset.dst, len(dataset.dst_dict)))
-    for split in splits:
-        print('| {} {} {} examples'.format(args.data, split, len(dataset.splits[split])))
+    checkpoints_path = 'checkpoints/generator/'
 
     # Set model parameters
     args.encoder_embed_dim = 1000
@@ -153,7 +112,7 @@ def train_g(args):
             logging_loss = loss.data / sample_size / math.log(2)
             logging_meters['bsz'].update(nsentences)
             logging_meters['train_loss'].update(logging_loss, sample_size)
-            logging.debug("loss at batch {0}: {1:.3f}, batch size: {2}".format(i, logging_meters['train_loss'].avg, round(logging_meters['bsz'].avg)))
+            logging.debug("Generator loss at batch {0}: {1:.3f}, batch size: {2}".format(i, logging_meters['train_loss'].avg, round(logging_meters['bsz'].avg)))
             optimizer.zero_grad()
             loss.backward()
 
@@ -202,10 +161,10 @@ def train_g(args):
                 sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
                 loss = loss / sample_size / math.log(2)
                 logging_meters['valid_loss'].update(loss, sample_size)
-                logging.debug("dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
+                logging.debug("Generator dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
 
 
-        logging.info("Average loss value per instance is {0} at the end of epoch {1}".format(logging_meters['valid_loss'].avg, epoch_i))
+        logging.info("Generator average loss value per instance is {0} at the end of epoch {1}".format(logging_meters['valid_loss'].avg, epoch_i))
 
         torch.save(generator, open(checkpoints_path + "nll_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i), 'wb'), pickle_module=dill)
 

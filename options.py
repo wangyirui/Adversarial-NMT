@@ -82,7 +82,7 @@ def add_checkpoint_args(parser, inference=False):
                             help="Location to dump the models.")
     return parser
 
-def add_model_args(parser):
+def add_generator_model_args(parser):
     parser.add_argument('--encoder-embed-dim', default=512, type=int,
                        help='encoder embedding dimension')
     parser.add_argument('--encoder-layers', default=1, type=int,
