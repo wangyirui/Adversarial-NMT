@@ -4,6 +4,7 @@ import logging
 import random
 import os
 import math
+import numpy as np
 from collections import OrderedDict
 
 import torch
@@ -33,6 +34,7 @@ def train_d(args, dataset):
     logging_meters = OrderedDict()
     logging_meters['train_loss'] = AverageMeter()
     logging_meters['valid_loss'] = AverageMeter()
+    logging_meters['valid_acc']  = AverageMeter
     logging_meters['update_times'] = AverageMeter()
 
     # Build model
@@ -51,7 +53,7 @@ def train_d(args, dataset):
         discriminator.cpu()
         generator.cpu()
 
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCELoss()
 
     optimizer = eval("torch.optim." + args.optimizer)(discriminator.parameters(), args.learning_rate)
 
@@ -109,17 +111,7 @@ def train_d(args, dataset):
                     prediction = prediction.squeeze(0)
                 trg_sentence = prediction
 
-            padded_src_sentence = pad_sentences(src_sentence, dataset.dst_dict.pad())
-            padded_trg_sentence = pad_sentences(trg_sentence, dataset.dst_dict.pad())
-            padded_src_embed = generator.encoder.embed_tokens(padded_src_sentence)
-            padded_trg_embed = generator.decoder.embed_tokens(padded_trg_sentence)
-
-            # build 2D-image like tensor
-            src_temp = torch.stack([padded_src_embed] * 50, dim=0)
-            trg_temp = torch.stack([padded_trg_embed] * 50, dim=0)
-            disc_input = torch.cat([src_temp, trg_temp], dim=1)
-
-            disc_out = discriminator(disc_input)
+            disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
             labels = Variable(torch.ones(sample['target'].size(0)).long())
             if use_cuda:
                 labels = labels.cuda()
@@ -162,7 +154,8 @@ def train_d(args, dataset):
 
                 src_sentence = sample['net_input']['src_tokens']
                 # train with human-translation
-                if random.random() >= 0.5:
+                rand = random.random()
+                if rand >= 0.5:
                     trg_sentence = sample['net_input']['target']
                     labels = Variable(torch.ones(sample['target'].size(0)).long())
                 # train with fake translation
@@ -172,24 +165,18 @@ def train_d(args, dataset):
                     trg_sentence = Variable(prediction.data, requires_grad=True)
                     labels = Variable(torch.zeros(sample['target'].size(0)).long())
 
-                padded_src_sentence = pad_sentences(src_sentence, dataset.dst_dict.pad())
-                padded_trg_sentence = pad_sentences(trg_sentence, dataset.dst_dict.pad())
-                padded_src_embed = generator.encoder.embed_tokens(padded_src_sentence)
-                padded_trg_embed = generator.decoder.embed_tokens(padded_trg_sentence)
-
-                # build 2D-image like tensor
-                src_temp = torch.stack([padded_src_embed] * 50, dim=0)
-                trg_temp = torch.stack([padded_trg_embed] * 50, dim=0)
-                disc_input = torch.cat([src_temp, trg_temp], dim=1)
-
-                disc_out = discriminator(disc_input)
+                disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
 
                 if use_cuda:
                     labels = labels.cuda()
 
                 loss = criterion(disc_out, labels)
+                top_val, top_inx = disc_out.topk(1)
+                acc = np.sum(top_inx == labels) / len(labels)
+                logging_meters['valid_acc'].update(acc)
                 logging_meters['valid_loss'].update(loss)
                 logging.debug("Discriminator dev loss at batch {0}: {1:.3f}".format(i, loss.item()))
+                logging.debug("Discriminator dev accuracy at batch {0}: {1:.3f}".format(i, acc.item()))
 
         torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i))
 
@@ -197,12 +184,9 @@ def train_d(args, dataset):
             best_dev_loss = logging_meters['valid_loss']
             torch.save(discriminator.state_dict(), checkpoints_path + "best_d_model.pt")
 
+        if logging_meters['valid_acc'].avg >= 0.6:
+            break
 
-def pad_sentences(sentences, pad_idx, size=50):
-    res = sentences[0].new(len(sentences), size).fill_(pad_idx)
-    for i, v in enumerate(sentences):
-        res[i][:, len(v)] = v
-    return res
 
 
 def update_learning_rate(current_epoch, lr_shrink, lr_shrink_from, optimizer):
