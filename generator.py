@@ -196,7 +196,7 @@ class AttnBasedDecoder(nn.Module):
             # T x B x C -> B x T x C
             x = x.transpose(1, 0)
         else:
-            predictions = torch.cat(predictions, dim=0).view(bsz, seqlen)
+            predictions = torch.stack(predictions, dim=1).view(bsz, seqlen)
 
         # srclen x tgtlen x bsz -> bsz x tgtlen x srclen
         attn_scores = attn_scores.transpose(0, 2)

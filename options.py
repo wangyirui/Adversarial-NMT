@@ -31,6 +31,9 @@ def add_dataset_args(parser):
                        help='maximum number of tokens in a batch')
     parser.add_argument('--max-sentences', '--batch-size', type=int, metavar='N',
                        help='maximum number of sentences in a batch')
+    parser.add_argument('--joint-batch-size', type=int, default=32, metavar='N',
+                        help='batch size for joint training')
+
     return parser
 
 def add_distributed_training_args(parser):
@@ -105,4 +108,18 @@ def add_generator_model_args(parser):
                         help='dropout probability')
     parser.add_argument('--bidirectional', default=False, type=bool,
                        help='unidirectional or bidirectional encoder')
+    return parser
+
+def add_generation_args(parser):
+    parser.add_argument('--beam', default=5, type=int, metavar='N',
+                       help='beam size')
+    parser.add_argument('--max-len-a', default=0, type=float, metavar='N',
+                       help=('generate sequences of maximum length ax + b, '
+                             'where x is the source length'))
+    parser.add_argument('--max-len-b', default=200, type=int, metavar='N',
+                       help=('generate sequences of maximum length ax + b, '
+                             'where x is the source length'))
+    parser.add_argument('--remove-bpe', nargs='?', const='@@ ', default=None,
+                       help='remove BPE tokens before scoring')
+
     return parser

@@ -181,7 +181,7 @@ def train_d(args, dataset):
         torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i))
 
         if logging_meters['valid_loss'].avg < best_dev_loss:
-            best_dev_loss = logging_meters['valid_loss']
+            best_dev_loss = logging_meters['valid_loss'].avg
             torch.save(discriminator.state_dict(), checkpoints_path + "best_d_model.pt")
 
         if logging_meters['valid_acc'].avg >= 0.6:

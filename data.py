@@ -141,12 +141,13 @@ class LanguageDatasets(object):
     def eval_dataloader(self, split, num_workers=0, max_tokens=None,
                         max_sentences=None, max_positions=(1024, 1024),
                         skip_invalid_size_inputs_valid_test=False,
-                        shard_id=0, num_shards=1):
+                        descending=False, shard_id=0, num_shards=1):
         dataset = self.splits[split]
-        batch_sampler = batches_by_order(
+        batch_sampler = batches_by_size(
             dataset.src, dataset.dst, max_tokens, max_sentences,
             max_positions=max_positions,
-            ignore_invalid_inputs=skip_invalid_size_inputs_valid_test)
+            ignore_invalid_inputs=skip_invalid_size_inputs_valid_test,
+            descending=descending)
         batch_sampler = mask_batches(batch_sampler, shard_id=shard_id, num_shards=num_shards)
         return torch.utils.data.DataLoader(
             dataset, num_workers=num_workers, collate_fn=dataset.collater,
@@ -241,9 +242,8 @@ class LanguagePairDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False):
-        # size = max(v.size(0) for v in values)
-        # use fixed size 50
-        size = 50
+        size = max(v.size(0) for v in values)
+
         res = values[0].new(len(values), size).fill_(pad_idx)
 
         def copy_tensor(src, dst):
@@ -318,21 +318,6 @@ def _make_batches(src, dst, indices, max_tokens, max_sentences, max_positions,
     if len(ignored) > 0:
         print("Warning! {} samples are either too short or too long "
               "and will be ignored, first few sample ids={}".format(len(ignored), ignored[:10]))
-
-def batches_by_order(src, dst, max_tokens=None, max_sentences=None,
-                    max_positions=(1024, 1024), ignore_invalid_inputs=False):
-    """Returns batches of indices sorted by size. Sequences with different
-    source lengths are not allowed in the same batch."""
-    assert isinstance(src, IndexedDataset) and isinstance(dst, IndexedDataset)
-    if max_tokens is None:
-        max_tokens = float('Inf')
-    if max_sentences is None:
-        max_sentences = float('Inf')
-    indices = range(len(src))
-    return list(_make_batches(
-        src, dst, indices, max_tokens, max_sentences, max_positions,
-        ignore_invalid_inputs, allow_different_src_lens=False))
-
 
 def batches_by_size(src, dst, max_tokens=None, max_sentences=None,
                     max_positions=(1024, 1024), ignore_invalid_inputs=False,

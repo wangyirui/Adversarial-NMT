@@ -32,7 +32,7 @@ options.add_dataset_args(parser)
 options.add_distributed_training_args(parser)
 options.add_optimization_args(parser)
 options.add_checkpoint_args(parser)
-options.add_model_args(parser)
+options.add_generator_model_args(parser)
 
 def main(args):
     use_cuda = (len(args.gpuid) >= 1)
@@ -73,7 +73,7 @@ def main(args):
         train_g(args, dataset)
     assert os.path.exists(g_model_path)
     generator = torch.load(g_model_path)
-
+    return
     # try to load discriminator model
     d_model_path = 'checkpoints/discriminator/best_d_model.pt'
     if not os._exists(d_model_path):

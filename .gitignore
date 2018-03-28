@@ -1,3 +1,4 @@
 checkpoints/*
 data/*
+data-bin/*
 *.pyc

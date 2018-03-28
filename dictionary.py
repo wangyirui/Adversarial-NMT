@@ -49,10 +49,18 @@ class Dictionary(object):
         def token_string(i):
             if i == self.unk():
                 return self.unk_string(escape_unk)
+            elif i == self.pad():
+                return ''
             else:
                 return self[i]
 
+        # find the (first) EOS token
+        eos_idx = (tensor == self.eos()).nonzero()[0] if len((tensor == self.eos()).nonzero()) > 0 else -1
+        # ignore the tokens after EOS
+        tensor = tensor[:eos_idx]
+        # obtain the raw words
         sent = ' '.join(token_string(i) for i in tensor if i != self.eos())
+
         if bpe_symbol is not None:
             sent = sent.replace(bpe_symbol, '')
         return sent

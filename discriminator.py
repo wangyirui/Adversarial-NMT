@@ -6,8 +6,6 @@ import numpy as np
 import generator
 
 class Discriminator(nn.Module):
-    self, args, src_dict, dst_dict, use_cuda = True
-
     def __init__(self, args, src_dict, dst_dict, use_cuda = True):
         super(Discriminator, self).__init__()
 

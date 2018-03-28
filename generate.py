@@ -24,6 +24,7 @@ options.add_general_args(parser)
 options.add_dataset_args(parser)
 options.add_checkpoint_args(parser, inference=True)
 options.add_distributed_training_args(parser)
+options.add_generation_args(parser)
 
 
 def main(args):
@@ -66,25 +67,33 @@ def main(args):
   else:
     generator.cpu()
 
-  with open('translation.txt', 'wb') as f_write:
-    for i, sample in enumerate(itr):
-      if use_cuda:
-        sample['id'] = sample['id'].cuda()
-        sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
-        sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
-        sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
-        sample['target'] = sample['target'].cuda()
+  with open('translation.txt', 'wb') as translation_writer:
+    with open('ground_truth.txt', 'wb') as ground_truth_writer:
+      for i, sample in enumerate(itr):
+        if use_cuda:
+          sample['id'] = sample['id'].cuda()
+          sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
+          sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
+          sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
+          sample['target'] = sample['target'].cuda()
 
-      with torch.no_grad():
-        _, prediction = generator(sample)  # (trg_seq_len, batch_size, trg_vocab_size)
-        prediction = prediction.squeeze(0)
+        with torch.no_grad():
+          _, prediction = generator(sample)
 
-      # get translation sentence (without replacing bpe symbol)
-      target_str = dataset.dst_dict.string(prediction, bpe_symbol=None, escape_unk=True)
-      target_str += '\n'
+        bsz = prediction.size(0)
+        for idx in range(bsz):
+          # get translation sentence (without replacing bpe symbol)
+          target_str = dataset.dst_dict.string(prediction[idx, :], bpe_symbol=args.remove_bpe, escape_unk=True)
+          ground_truth = dataset.dst_dict.string(sample['target'][idx, :], bpe_symbol=args.remove_bpe, escape_unk=True)
+          target_str += '\n'
+          ground_truth += '\n'
 
-      f_write.write(target_str.encode('utf-8'))
-      print("{0:.3f}% is translated...".format(float(i + 1) * 100 / len(itr)))
+          translation_writer.write(target_str.encode('utf-8'))
+          ground_truth_writer.write(ground_truth.encode('utf-8'))
+
+        progress = float(i + 1) * 100 / len(itr)
+        if progress % 5 == 0:
+          print("{0:.3f}% is translated...".format(progress))
 
 
 if __name__ == "__main__":

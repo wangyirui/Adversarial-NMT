@@ -169,7 +169,7 @@ def train_g(args, dataset):
         torch.save(generator, open(checkpoints_path + "nll_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i), 'wb'), pickle_module=dill)
 
         if logging_meters['valid_loss'].avg < best_dev_loss:
-            best_dev_loss = logging_meters['valid_loss']
+            best_dev_loss = logging_meters['valid_loss'].avg
             torch.save(generator, open(checkpoints_path + "best_gmodel.pt", 'wb'), pickle_module=dill)
 
 
