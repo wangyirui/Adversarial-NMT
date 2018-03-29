@@ -123,7 +123,7 @@ class LanguageDatasets(object):
         assert self.src_dict.unk() == self.dst_dict.unk()
 
     def train_dataloader(self, split, max_tokens=None,
-                         max_sentences=None, max_positions=(1024, 1024),
+                         max_sentences=None, max_positions=(50, 50),
                          seed=None, epoch=1, sample_without_replacement=0,
                          sort_by_source_size=False, shard_id=0, num_shards=1):
         dataset = self.splits[split]
@@ -139,7 +139,7 @@ class LanguageDatasets(object):
             batch_sampler=batch_sampler)
 
     def eval_dataloader(self, split, num_workers=0, max_tokens=None,
-                        max_sentences=None, max_positions=(1024, 1024),
+                        max_sentences=None, max_positions=(50, 50),
                         skip_invalid_size_inputs_valid_test=False,
                         descending=False, shard_id=0, num_shards=1):
         dataset = self.splits[split]
@@ -320,7 +320,7 @@ def _make_batches(src, dst, indices, max_tokens, max_sentences, max_positions,
               "and will be ignored, first few sample ids={}".format(len(ignored), ignored[:10]))
 
 def batches_by_size(src, dst, max_tokens=None, max_sentences=None,
-                    max_positions=(1024, 1024), ignore_invalid_inputs=False,
+                    max_positions=(50, 50), ignore_invalid_inputs=False,
                     descending=False):
     """Returns batches of indices sorted by size. Sequences with different
     source lengths are not allowed in the same batch."""
@@ -338,7 +338,7 @@ def batches_by_size(src, dst, max_tokens=None, max_sentences=None,
 
 
 def shuffled_batches_by_size(src, dst, max_tokens=None, max_sentences=None,
-                             epoch=1, sample=0, max_positions=(1024, 1024),
+                             epoch=1, sample=0, max_positions=(50, 50),
                              sort_by_source_size=False):
     """Returns batches of indices, bucketed by size and then shuffled. Batches
     may contain sequences of different lengths."""

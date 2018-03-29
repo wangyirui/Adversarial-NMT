@@ -50,12 +50,14 @@ def add_distributed_training_args(parser):
 def add_optimization_args(parser):
     parser.add_argument("--optimizer", default="Adam", choices=["SGD", "Adadelta", "Adam"],
                         help="Optimizer of choice for training. (default=Adam)")
+    parser.add_argument("--g_optimizer", default="SGD", choices=["SGD", "Adadelta", "Adam"],
+                        help="Optimizer of choice for training. (default=Adam)")
+    parser.add_argument("--d_optimizer", default="SGD", choices=["SGD", "Adadelta", "Adam"],
+                        help="Optimizer of choice for training. (default=Adam)")
     parser.add_argument("--learning_rate", "-lr", default=1e-3, type=float,
                         help="Learning rate of the optimization. (default=0.1)")
-    parser.add_argument("--lr_shrink", default=0.1, type=float,
+    parser.add_argument("--lr_shrink", default=0.5, type=float,
                         help='learning rate shrink factor, lr_new = (lr * lr_shrink)')
-    parser.add_argument("--lr_shrink_from", default=float('inf'), type=float,
-                        help="shrink learning rate from the given epoch")
     parser.add_argument("--momentum", default=0.9, type=float,
                         help="Momentum when performing SGD. (default=0.9)")
     parser.add_argument("--use_estop", default=False, type=bool,
@@ -108,6 +110,11 @@ def add_generator_model_args(parser):
                         help='dropout probability')
     parser.add_argument('--bidirectional', default=False, type=bool,
                        help='unidirectional or bidirectional encoder')
+    return parser
+
+def add_discriminator_model_args(parser):
+    parser.add_argument('--pad-dim', default=50, type=int,
+                       help='discriminator padding size')
     return parser
 
 def add_generation_args(parser):

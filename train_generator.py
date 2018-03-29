@@ -20,24 +20,12 @@ def train_g(args, dataset):
         datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
 
     use_cuda = (len(args.gpuid) >= 1)
-    if args.gpuid:
-        cuda.set_device(args.gpuid[0])
 
     # check checkpoints saving path
     if not os.path.exists('checkpoints/generator'):
         os.makedirs('checkpoints/ganerator')
 
     checkpoints_path = 'checkpoints/generator/'
-
-    # Set model parameters
-    args.encoder_embed_dim = 1000
-    args.encoder_layers = 4
-    args.encoder_dropout_out = 0
-    args.decoder_embed_dim = 1000
-    args.decoder_layers = 4
-    args.decoder_out_embed_dim = 1000
-    args.decoder_dropout_out = 0
-    args.bidirectional = False
 
     logging_meters = OrderedDict()
     logging_meters['train_loss'] = AverageMeter()
@@ -86,7 +74,7 @@ def train_g(args, dataset):
         generator.train()
 
         # # update learning rate if necessary
-        update_learning_rate(epoch_i, args.lr_shrink, args.lr_shrink_from, optimizer)
+        # update_learning_rate(epoch_i, args.lr_shrink, args.lr_shrink_from, optimizer)
 
         # reset meters
         for key, val in logging_meters.items():

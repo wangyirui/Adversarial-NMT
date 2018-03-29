@@ -22,8 +22,6 @@ def train_d(args, dataset):
         datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
 
     use_cuda = (len(args.gpuid) >= 1)
-    if args.gpuid:
-        cuda.set_device(args.gpuid[0])
 
     # check checkpoints saving path
     if not os.path.exists('checkpoints/discriminator'):
@@ -33,16 +31,17 @@ def train_d(args, dataset):
 
     logging_meters = OrderedDict()
     logging_meters['train_loss'] = AverageMeter()
+    logging_meters['train_acc'] = AverageMeter()
     logging_meters['valid_loss'] = AverageMeter()
-    logging_meters['valid_acc']  = AverageMeter
+    logging_meters['valid_acc']  = AverageMeter()
     logging_meters['update_times'] = AverageMeter()
 
     # Build model
     discriminator = Discriminator(args, dataset.src_dict, dataset.dst_dict,  use_cuda=use_cuda)
 
     # Load generator
-    assert os.path.exists('checkpoints/generator/best_g_model.pt')
-    generator = torch.load('checkpoints/generator/best_g_model.pt')
+    assert os.path.exists('checkpoints/generator/best_gmodel.pt')
+    generator = torch.load('checkpoints/generator/best_gmodel.pt')
     generator.decoder.is_testing = True
     generator.eval()
 
@@ -53,7 +52,7 @@ def train_d(args, dataset):
         discriminator.cpu()
         generator.cpu()
 
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.CrossEntropyLoss(size_average=False)
 
     optimizer = eval("torch.optim." + args.optimizer)(discriminator.parameters(), args.learning_rate)
 
@@ -65,13 +64,13 @@ def train_d(args, dataset):
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        max_positions_train = (args.max_source_positions, args.max_target_positions)
+        max_positions_train = (args.pad_dim, args.pad_dim)
 
         # Initialize dataloader, starting at batch_offset
         itr = dataset.train_dataloader(
             'train',
             max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences,
+            max_sentences=args.joint_batch_size,
             max_positions=max_positions_train,
             seed=seed,
             epoch=epoch_i,
@@ -84,7 +83,7 @@ def train_d(args, dataset):
         discriminator.train()
 
         # # update learning rate if necessary
-        update_learning_rate(epoch_i, args.lr_shrink, args.lr_shrink_from, optimizer)
+        # update_learning_rate(epoch_i, args.lr_shrink, args.lr_shrink_from, optimizer)
 
         # reset meters
         for key, val in logging_meters.items():
@@ -99,38 +98,50 @@ def train_d(args, dataset):
                 sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
                 sample['target'] = sample['target'].cuda()
 
-
+            # construct the training samples with randomly select
+            # fake translation and human translation
+            bsz = sample['target'].size(0)
             src_sentence = sample['net_input']['src_tokens']
-            # train with human-translation
-            if random.random() >= 0.5:
-                trg_sentence = sample['net_input']['target']
-            # train with fake translation
-            else:
-                with torch.no_grad():
-                    _, prediction = generator(src_sentence)  # (trg_seq_len, batch_size, trg_vocab_size)
-                    prediction = prediction.squeeze(0)
-                trg_sentence = prediction
+            # train with half human-translation and half machine translation
+
+            true_sentence = sample['target']
+            true_labels = Variable(torch.ones(sample['target'].size(0)).long())
+
+            with torch.no_grad():
+                _, prediction = generator(sample)
+            fake_sentence = prediction
+            fake_labels = Variable(torch.zeros(sample['target'].size(0)).long())
+
+            trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
+            labels = torch.cat([true_labels, fake_labels], dim=0)
+
+            indices = np.random.permutation(2 * bsz)
+            trg_sentence = trg_sentence[indices][:bsz]
+            labels = labels[indices][:bsz]
 
             disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
-            labels = Variable(torch.ones(sample['target'].size(0)).long())
             if use_cuda:
                 labels = labels.cuda()
 
             loss = criterion(disc_out, labels)
-            logging.debug("Discriminator training loss at batch {0}: {1:.3f}".format(i, loss.item()))
+            top_val, top_inx = disc_out.topk(1)
+            acc = torch.sum(top_inx.squeeze(1) == labels).float() / len(labels)
+            logging_meters['train_acc'].update(acc)
+            logging_meters['train_loss'].update(loss)
+            logging.debug("D training loss {0:.3f}, acc {1:.3f} at batch {2}: ".format(logging_meters['train_loss'].avg, logging_meters['train_acc'].avg, i))
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-
+        max_positions_valid = (args.pad_dim, args.pad_dim)
         # validation process
         itr = dataset.eval_dataloader(
             'valid',
             max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences,
-            max_positions=(50, 50),
-            skip_invalid_size_inputs_valid_test=args.skip_invalid_size_inputs_valid_test,
+            max_sentences=args.joint_batch_size,
+            max_positions=max_positions_valid,
+            skip_invalid_size_inputs_valid_test=True,
             descending=True,  # largest batch first to warm the caching allocator
             shard_id=args.distributed_rank,
             num_shards=args.distributed_world_size,
@@ -152,37 +163,42 @@ def train_d(args, dataset):
                     sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
                     sample['target'] = sample['target'].cuda()
 
+                bsz = sample['target'].size(0)
                 src_sentence = sample['net_input']['src_tokens']
-                # train with human-translation
-                rand = random.random()
-                if rand >= 0.5:
-                    trg_sentence = sample['net_input']['target']
-                    labels = Variable(torch.ones(sample['target'].size(0)).long())
-                # train with fake translation
-                else:
-                    _, prediction = generator(src_sentence)  # (trg_seq_len, batch_size, trg_vocab_size)
-                    prediction = prediction.squeeze(0)
-                    trg_sentence = Variable(prediction.data, requires_grad=True)
-                    labels = Variable(torch.zeros(sample['target'].size(0)).long())
+                # train with half human-translation and half machine translation
 
-                disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
+                true_sentence = sample['target']
+                true_labels = Variable(torch.ones(sample['target'].size(0)).long())
+
+                with torch.no_grad():
+                    _, prediction = generator(sample)
+                fake_sentence = prediction
+                fake_labels = Variable(torch.zeros(sample['target'].size(0)).long())
+
+                trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
+                labels = torch.cat([true_labels, fake_labels], dim=0)
+
+                indices = np.random.permutation(2 * bsz)
+                trg_sentence = trg_sentence[indices][:bsz]
+                labels = labels[indices][:bsz]
 
                 if use_cuda:
                     labels = labels.cuda()
 
+                disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
+
                 loss = criterion(disc_out, labels)
                 top_val, top_inx = disc_out.topk(1)
-                acc = np.sum(top_inx == labels) / len(labels)
+                acc = torch.sum(top_inx.squeeze(1) == labels).float() / len(labels)
                 logging_meters['valid_acc'].update(acc)
                 logging_meters['valid_loss'].update(loss)
-                logging.debug("Discriminator dev loss at batch {0}: {1:.3f}".format(i, loss.item()))
-                logging.debug("Discriminator dev accuracy at batch {0}: {1:.3f}".format(i, acc.item()))
+                logging.debug("D dev loss {0:.3f}, acc {1:.3f} at batch {2}".format(logging_meters['valid_loss'].avg, logging_meters['valid_acc'].avg, i))
 
         torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i))
 
         if logging_meters['valid_loss'].avg < best_dev_loss:
             best_dev_loss = logging_meters['valid_loss'].avg
-            torch.save(discriminator.state_dict(), checkpoints_path + "best_d_model.pt")
+            torch.save(discriminator.state_dict(), checkpoints_path + "best_dmodel.pt")
 
         if logging_meters['valid_acc'].avg >= 0.6:
             break

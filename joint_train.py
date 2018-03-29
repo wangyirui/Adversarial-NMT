@@ -33,6 +33,7 @@ options.add_distributed_training_args(parser)
 options.add_optimization_args(parser)
 options.add_checkpoint_args(parser)
 options.add_generator_model_args(parser)
+options.add_discriminator_model_args(parser)
 
 def main(args):
     use_cuda = (len(args.gpuid) >= 1)
@@ -58,29 +59,48 @@ def main(args):
     g_logging_meters = OrderedDict()
     g_logging_meters['train_loss'] = AverageMeter()
     g_logging_meters['valid_loss'] = AverageMeter()
+    g_logging_meters['train_acc'] = AverageMeter()
+    g_logging_meters['valid_acc'] = AverageMeter()
     g_logging_meters['bsz'] = AverageMeter()  # sentences per batch
     g_logging_meters['update_times'] = AverageMeter()
 
     d_logging_meters = OrderedDict()
     d_logging_meters['train_loss'] = AverageMeter()
     d_logging_meters['valid_loss'] = AverageMeter()
+    d_logging_meters['train_acc'] = AverageMeter()
+    d_logging_meters['valid_acc'] = AverageMeter()
     d_logging_meters['bsz'] = AverageMeter()  # sentences per batch
     d_logging_meters['update_times'] = AverageMeter()
 
+    # Set model parameters
+    args.encoder_embed_dim = 1000
+    args.encoder_layers = 4
+    args.encoder_dropout_out = 0
+    args.decoder_embed_dim = 1000
+    args.decoder_layers = 4
+    args.decoder_out_embed_dim = 1000
+    args.decoder_dropout_out = 0
+    args.bidirectional = False
+
     # try to load generator model
-    g_model_path = 'checkpoints/generator/best_g_model.pt'
+    g_model_path = 'checkpoints/generator/best_gmodel.pt'
     if not os.path.exists(g_model_path):
+        print("Start training generator!")
         train_g(args, dataset)
     assert os.path.exists(g_model_path)
     generator = torch.load(g_model_path)
-    return
+    print("Generator has successfully loaded!")
+
     # try to load discriminator model
-    d_model_path = 'checkpoints/discriminator/best_d_model.pt'
+    d_model_path = 'checkpoints/discriminator/best_dmodel.pt'
     if not os._exists(d_model_path):
+        print("Start training discriminator!")
         train_d(args, dataset)
     assert  os.path.exists(d_model_path)
     discriminator = Discriminator(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
     discriminator.load_state_dict(torch.load(d_model_path))
+    print("Discriminator has successfully loaded!")
+    return
 
     # adversarial training checkpoints saving path
     if not os.path.exists('checkpoints/joint'):
@@ -89,7 +109,7 @@ def main(args):
 
     # define loss function
     g_criterion = torch.nn.NLLLoss(size_average=False, ignore_index=dataset.dst_dict.pad(),reduce=True)
-    d_criterion = torch.nn.BCELoss()
+    d_criterion = torch.nn.CrossEntropyLoss(size_average=False)
     pg_criterion = PGLoss()
 
     # define optimizer
@@ -105,13 +125,13 @@ def main(args):
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        max_positions_train = (args.max_source_positions, args.max_target_positions)
+        max_positions_train = (args.pad_dim, args.pad_dim)
 
         # Initialize dataloader, starting at batch_offset
         itr = dataset.train_dataloader(
             'train',
             max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences,
+            max_sentences=args.joint_batch_size,
             max_positions=max_positions_train,
             seed=seed,
             epoch=epoch_i,
@@ -151,6 +171,7 @@ def main(args):
                 # obtain discriminator judge
                 with torch.no_grad():
                     reward = discriminator(src_sentence, sys_out_batch, dataset.dst_dict.pad())
+                    reward = reward[:,-1]
                 train_trg_batch = sample['target']
                 pg_loss = pg_criterion(sys_out_batch, train_trg_batch, reward)
                 logging.debug("Generator policy gradient loss at batch {0}: {1:.3f}".format(i, pg_loss.item()))
@@ -179,19 +200,27 @@ def main(args):
 
             # part II: train the discriminator
 
+            bsz = sample['target'].size(0)
             src_sentence = sample['net_input']['src_tokens']
-            # train discriminator with human translation with probability 50%
-            rand = random.random()
-            if rand >= 0.5:
-                trg_sentence = sample['net_input']['target']
-                labels = Variable(torch.ones(sample['target'].size(0)).long())
-            else:
-                with torch.no_grad():
-                    sys_out_batch, _ = generator(sample)
-                    _, trg_sentence = sys_out_batch.topk(1)
-                labels = Variable(torch.zeros(sample['target'].size(0)).long())
+            # train with half human-translation and half machine translation
+            true_sentence = sample['target']
+            true_labels = Variable(torch.ones(sample['target'].size(0)).long())
+
+            with torch.no_grad():
+                _, prediction = generator(sample)
+            fake_sentence = prediction
+            fake_labels = Variable(torch.zeros(sample['target'].size(0)).long())
+
+            trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
+            labels = torch.cat([true_labels, fake_labels], dim=0)
+
+            indices = np.random.permutation(2 * bsz)
+            trg_sentence = trg_sentence[indices][:bsz]
+            labels = labels[indices][:bsz]
+
             if use_cuda:
                 labels = labels.cuda()
+
             disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
             d_loss = d_criterion(disc_out, labels)
             logging.debug("Discriminator training loss at batch {0}: {1:.3f}".format(i, d_loss.item()))
@@ -205,13 +234,13 @@ def main(args):
         generator.eval()
         discriminator.eval()
         # Initialize dataloader
-        max_positions_valid = (1e5, 1e5)
+        max_positions_valid = (args.pad_dim, args.pad_dim)
         itr = dataset.eval_dataloader(
             'valid',
             max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences,
+            max_sentences=args.joint_batch_size,
             max_positions=max_positions_valid,
-            skip_invalid_size_inputs_valid_test=args.skip_invalid_size_inputs_valid_test,
+            skip_invalid_size_inputs_valid_test=True,
             descending=True,  # largest batch first to warm the caching allocator
             shard_id=args.distributed_rank,
             num_shards=args.distributed_world_size,
@@ -245,18 +274,28 @@ def main(args):
                 logging.debug("Generator dev loss at batch {0}: {1:.3f}".format(i, g_logging_meters['valid_loss'].avg))
 
                 # discriminator validation
+                bsz = sample['target'].size(0)
                 src_sentence = sample['net_input']['src_tokens']
-                # valid discriminator with human translation with probability 50%
-                rand = random.random()
-                if rand >= 0.5:
-                    trg_sentence = sample['net_input']['target']
-                    labels = Variable(torch.ones(sample['target'].size(0)).long())
-                else:
-                    sys_out_batch, _ = generator(sample)
-                    _, trg_sentence = sys_out_batch.topk(1)
-                    labels = Variable(torch.zeros(sample['target'].size(0)).long())
+                # train with half human-translation and half machine translation
+
+                true_sentence = sample['target']
+                true_labels = Variable(torch.ones(sample['target'].size(0)).long())
+
+                with torch.no_grad():
+                    _, prediction = generator(sample)
+                fake_sentence = prediction
+                fake_labels = Variable(torch.zeros(sample['target'].size(0)).long())
+
+                trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
+                labels = torch.cat([true_labels, fake_labels], dim=0)
+
+                indices = np.random.permutation(2 * bsz)
+                trg_sentence = trg_sentence[indices][:bsz]
+                labels = labels[indices][:bsz]
+
                 if use_cuda:
                     labels = labels.cuda()
+
                 disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
                 d_loss = d_criterion(disc_out, labels)
                 logging.debug("Discriminator dev loss at batch {0}: {1:.3f}".format(i, d_loss.item()))
