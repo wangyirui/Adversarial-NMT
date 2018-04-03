@@ -5,6 +5,7 @@ import dill
 import os
 import options
 import random
+import numpy as np
 from collections import OrderedDict
 
 import torch
@@ -62,7 +63,6 @@ def main(args):
     g_logging_meters['train_acc'] = AverageMeter()
     g_logging_meters['valid_acc'] = AverageMeter()
     g_logging_meters['bsz'] = AverageMeter()  # sentences per batch
-    g_logging_meters['update_times'] = AverageMeter()
 
     d_logging_meters = OrderedDict()
     d_logging_meters['train_loss'] = AverageMeter()
@@ -70,7 +70,6 @@ def main(args):
     d_logging_meters['train_acc'] = AverageMeter()
     d_logging_meters['valid_acc'] = AverageMeter()
     d_logging_meters['bsz'] = AverageMeter()  # sentences per batch
-    d_logging_meters['update_times'] = AverageMeter()
 
     # Set model parameters
     args.encoder_embed_dim = 1000
@@ -83,7 +82,7 @@ def main(args):
     args.bidirectional = False
 
     # try to load generator model
-    g_model_path = 'checkpoints/generator/best_gmodel.pt'
+    g_model_path = 'checkpoints/generator/nll_3.264.epoch_4.pt'
     if not os.path.exists(g_model_path):
         print("Start training generator!")
         train_g(args, dataset)
@@ -93,37 +92,50 @@ def main(args):
 
     # try to load discriminator model
     d_model_path = 'checkpoints/discriminator/best_dmodel.pt'
-    if not os._exists(d_model_path):
+    if not os.path.exists(d_model_path):
         print("Start training discriminator!")
         train_d(args, dataset)
     assert  os.path.exists(d_model_path)
     discriminator = Discriminator(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
     discriminator.load_state_dict(torch.load(d_model_path))
     print("Discriminator has successfully loaded!")
-    return
+
+    if use_cuda:
+        discriminator.cuda()
+        generator.cuda()
+    else:
+        discriminator.cpu()
+        generator.cpu()
 
     # adversarial training checkpoints saving path
     if not os.path.exists('checkpoints/joint'):
         os.makedirs('checkpoints/joint')
-    checkpoints_path = 'checkpoints/generator/'
+    checkpoints_path = 'checkpoints/joint/'
 
     # define loss function
     g_criterion = torch.nn.NLLLoss(size_average=False, ignore_index=dataset.dst_dict.pad(),reduce=True)
-    d_criterion = torch.nn.CrossEntropyLoss(size_average=False)
-    pg_criterion = PGLoss()
+    d_criterion = torch.nn.BCELoss()
+    pg_criterion = PGLoss(ignore_index=dataset.dst_dict.pad(), size_average=True,reduce=True)
+
+    # fix discriminator word embedding (as Wu et al. do)
+    for p in discriminator.embed_src_tokens.parameters():
+        p.requires_grad = False
+    for p in discriminator.embed_trg_tokens.parameters():
+        p.requires_grad = False
 
     # define optimizer
-    g_optimizer = eval("torch.optim." + args.optimizer)(generator.parameters(), args.learning_rate)
-    d_optimizer = eval("torch.optim." + args.optimizer)(discriminator.parameters(), args.learning_rate)
+    g_optimizer = eval("torch.optim." + args.g_optimizer)(filter(lambda x: x.requires_grad, generator.parameters()), args.g_learning_rate)
+    d_optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()), args.d_learning_rate, momentum=args.momentum, nesterov=True)
 
     # start joint training
     best_dev_loss = math.inf
+    num_update = 0
     # main training loop
     for epoch_i in range(1, args.epochs + 1):
         logging.info("At {0}-th epoch.".format(epoch_i))
 
-        seed = args.seed + epoch_i
-        torch.manual_seed(seed)
+        # seed = args.seed + epoch_i
+        # torch.manual_seed(seed)
 
         max_positions_train = (args.pad_dim, args.pad_dim)
 
@@ -133,7 +145,7 @@ def main(args):
             max_tokens=args.max_tokens,
             max_sentences=args.joint_batch_size,
             max_positions=max_positions_train,
-            seed=seed,
+            # seed=seed,
             epoch=epoch_i,
             sample_without_replacement=args.sample_without_replacement,
             sort_by_source_size=(epoch_i <= args.curriculum),
@@ -152,6 +164,7 @@ def main(args):
         # set training mode
         generator.train()
         discriminator.train()
+        update_learning_rate(num_update, 8e4, args.g_learning_rate, args.lr_shrink, g_optimizer)
 
         for i, sample in enumerate(itr):
             if use_cuda:
@@ -163,23 +176,36 @@ def main(args):
 
             ## part I: use gradient policy method to train the generator
 
-            # obtain generator output
-            sys_out_batch, _ = generator(sample)
-            # use policy gradient training with 50% probability
+            # use policy gradient training when rand > 50%
             rand = random.random()
             if rand >= 0.5:
-                # obtain discriminator judge
+                # policy gradient training
+                generator.decoder.is_testing = True
+                sys_out_batch, prediction = generator(sample)
+                generator.decoder.is_testing = False
                 with torch.no_grad():
-                    reward = discriminator(src_sentence, sys_out_batch, dataset.dst_dict.pad())
-                    reward = reward[:,-1]
+                    reward = discriminator(sample['net_input']['src_tokens'], prediction, dataset.dst_dict.pad())
                 train_trg_batch = sample['target']
-                pg_loss = pg_criterion(sys_out_batch, train_trg_batch, reward)
-                logging.debug("Generator policy gradient loss at batch {0}: {1:.3f}".format(i, pg_loss.item()))
+                pg_loss = pg_criterion(sys_out_batch, train_trg_batch, reward, use_cuda)
+                # logging.debug("G policy gradient loss at batch {0}: {1:.3f}, lr={2}".format(i, pg_loss.item(), g_optimizer.param_groups[0]['lr']))
                 g_optimizer.zero_grad()
                 pg_loss.backward()
                 torch.nn.utils.clip_grad_norm(generator.parameters(), args.clip_norm)
                 g_optimizer.step()
+
+                # oracle valid
+                sys_out_batch, _ = generator(sample)
+                train_trg_batch = sample['target'].view(-1)
+                sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
+                loss = g_criterion(sys_out_batch, train_trg_batch)
+                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
+                logging_loss = loss.data / sample_size / math.log(2)
+                g_logging_meters['train_loss'].update(logging_loss, sample_size)
+                logging.debug("G MLE loss at batch {0}: {1:.3f}, lr={2}".format(i, g_logging_meters['train_loss'].avg,
+                                                                                g_optimizer.param_groups[0]['lr']))
             else:
+                # MLE training
+                sys_out_batch, _ = generator(sample)
                 train_trg_batch = sample['target'].view(-1)
                 sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
                 loss = g_criterion(sys_out_batch, train_trg_batch)
@@ -188,7 +214,8 @@ def main(args):
                 logging_loss = loss.data / sample_size / math.log(2)
                 g_logging_meters['bsz'].update(nsentences)
                 g_logging_meters['train_loss'].update(logging_loss, sample_size)
-                logging.debug("Generator loss at batch {0}: {1:.3f}".format(i, g_logging_meters['train_loss'].avg))
+                logging.debug("G MLE loss at batch {0}: {1:.3f}, lr={2}".format(i, g_logging_meters['train_loss'].avg,
+                                                                                           g_optimizer.param_groups[0]['lr']))
                 g_optimizer.zero_grad()
                 loss.backward()
                 # all-reduce grads and rescale by grad_denom
@@ -197,19 +224,23 @@ def main(args):
                         p.grad.data.div_(sample_size)
                 torch.nn.utils.clip_grad_norm(generator.parameters(), args.clip_norm)
                 g_optimizer.step()
+            num_update += 1
+
 
             # part II: train the discriminator
-
             bsz = sample['target'].size(0)
             src_sentence = sample['net_input']['src_tokens']
             # train with half human-translation and half machine translation
+
             true_sentence = sample['target']
-            true_labels = Variable(torch.ones(sample['target'].size(0)).long())
+            true_labels = Variable(torch.ones(sample['target'].size(0)).float())
 
             with torch.no_grad():
+                generator.decoder.is_testing = True
                 _, prediction = generator(sample)
+                generator.decoder.is_testing = False
             fake_sentence = prediction
-            fake_labels = Variable(torch.zeros(sample['target'].size(0)).long())
+            fake_labels = Variable(torch.zeros(sample['target'].size(0)).float())
 
             trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
             labels = torch.cat([true_labels, fake_labels], dim=0)
@@ -223,10 +254,16 @@ def main(args):
 
             disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
             d_loss = d_criterion(disc_out, labels)
-            logging.debug("Discriminator training loss at batch {0}: {1:.3f}".format(i, d_loss.item()))
+            acc = torch.sum(torch.round(disc_out).squeeze(1) == labels).float() / len(labels)
+            d_logging_meters['train_acc'].update(acc)
+            d_logging_meters['train_loss'].update(d_loss)
+            # logging.debug("D training loss {0:.3f}, acc {1:.3f} at batch {2}: ".format(d_logging_meters['train_loss'].avg,
+            #                                                                            d_logging_meters['train_acc'].avg,
+            #                                                                            i))
             d_optimizer.zero_grad()
             d_loss.backward()
             d_optimizer.step()
+
 
 
         # validation
@@ -271,7 +308,7 @@ def main(args):
                 sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
                 loss = loss / sample_size / math.log(2)
                 g_logging_meters['valid_loss'].update(loss, sample_size)
-                logging.debug("Generator dev loss at batch {0}: {1:.3f}".format(i, g_logging_meters['valid_loss'].avg))
+                logging.debug("G dev loss at batch {0}: {1:.3f}".format(i, g_logging_meters['valid_loss'].avg))
 
                 # discriminator validation
                 bsz = sample['target'].size(0)
@@ -279,12 +316,14 @@ def main(args):
                 # train with half human-translation and half machine translation
 
                 true_sentence = sample['target']
-                true_labels = Variable(torch.ones(sample['target'].size(0)).long())
+                true_labels = Variable(torch.ones(sample['target'].size(0)).float())
 
                 with torch.no_grad():
+                    generator.decoder.is_testing = True
                     _, prediction = generator(sample)
+                    generator.decoder.is_testing = False
                 fake_sentence = prediction
-                fake_labels = Variable(torch.zeros(sample['target'].size(0)).long())
+                fake_labels = Variable(torch.zeros(sample['target'].size(0)).float())
 
                 trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
                 labels = torch.cat([true_labels, fake_labels], dim=0)
@@ -298,16 +337,25 @@ def main(args):
 
                 disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
                 d_loss = d_criterion(disc_out, labels)
-                logging.debug("Discriminator dev loss at batch {0}: {1:.3f}".format(i, d_loss.item()))
+                acc = torch.sum(torch.round(disc_out).squeeze(1) == labels).float() / len(labels)
+                d_logging_meters['valid_acc'].update(acc)
+                d_logging_meters['valid_loss'].update(d_loss)
+                # logging.debug("D dev loss {0:.3f}, acc {1:.3f} at batch {2}".format(d_logging_meters['valid_loss'].avg,
+                #                                                                     d_logging_meters['valid_acc'].avg, i))
 
         torch.save(generator,
                    open(checkpoints_path + "joint_{0:.3f}.epoch_{1}.pt".format(g_logging_meters['valid_loss'].avg, epoch_i),
                         'wb'), pickle_module=dill)
 
         if g_logging_meters['valid_loss'].avg < best_dev_loss:
-            best_dev_loss = g_logging_meters['valid_loss']
+            best_dev_loss = g_logging_meters['valid_loss'].avg
             torch.save(generator, open(checkpoints_path + "best_gmodel.pt", 'wb'), pickle_module=dill)
 
+
+def update_learning_rate(update_times, target_times, init_lr, lr_shrink, optimizer):
+    lr = init_lr * (lr_shrink ** (update_times // target_times))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 if __name__ == "__main__":
   ret = parser.parse_known_args()

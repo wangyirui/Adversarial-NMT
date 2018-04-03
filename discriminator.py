@@ -15,36 +15,31 @@ class Discriminator(nn.Module):
         self.pad_dim = args.pad_dim
         self.use_cuda = use_cuda
 
-        self.embed_src_tokens = generator.Embedding(len(src_dict), args.encoder_embed_dim, src_dict.pad())
-        self.embed_trg_tokens = generator.Embedding(len(dst_dict), args.decoder_embed_dim, dst_dict.pad())
+        self.embed_src_tokens = nn.Embedding(len(src_dict), args.encoder_embed_dim)
+        self.embed_trg_tokens = nn.Embedding(len(dst_dict), args.decoder_embed_dim)
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels = args.encoder_embed_dim * 2
-                                    if args.encoder_embed_dim == args.decoder_embed_dim
-                                    else args.encoder_embed_dim + args.decoder_embed_dim,
-                      out_channels = 64,
+            nn.Conv2d(in_channels = args.encoder_embed_dim * 2,
+                      out_channels = 512,
                       kernel_size = 3,
-                      stride = 1,
-                      padding = 1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
+                      stride = 1),
+            # nn.BatchNorm2d(512),
+            nn.Sigmoid(),
             nn.MaxPool2d(kernel_size = 2,
                          stride = 2))
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels = 64,
-                      out_channels = 20,
+            nn.Conv2d(in_channels = 512,
+                      out_channels = 256,
                       kernel_size = 3,
-                      stride = 1,
-                      padding = 1),
-            nn.BatchNorm2d(20),
-            nn.ReLU(),
+                      stride = 1),
+            # nn.BatchNorm2d(256),
+            nn.Sigmoid(),
             nn.MaxPool2d(kernel_size = 2,
                          stride = 2))
-
-        self.fc_in = nn.Linear(2880, 20)
-        self.fc_out = nn.Linear(20,2)
-        self.softmax = nn.Softmax(dim=1)
+        self.fc_in = nn.Linear(256*121, 20)
+        self.fc_out= nn.Linear(20, 1)
+        self.sigmoid = nn.Sigmoid()
 
 
     def forward(self, src_sentence, trg_sentence, pad_idx):
@@ -64,9 +59,9 @@ class Discriminator(nn.Module):
         out = self.conv1(input)
         out = self.conv2(out)
         out = out.view(out.size(0), -1)
-        out = F.relu(self.fc_in(out))
+        out = self.fc_in(out)
         out = self.fc_out(out)
-        out = self.softmax(out)
+        out = self.sigmoid(out)
 
         return out
 

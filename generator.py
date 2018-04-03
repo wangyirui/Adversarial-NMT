@@ -178,10 +178,9 @@ class AttnBasedDecoder(nn.Module):
             # project back to size of vocabulary
             out = self.fc_out(out)
             out = F.log_softmax(out, dim=1)
+            outs.append(out)
 
-            if not self.is_testing:
-                outs.append(out)
-            else:
+            if self.is_testing:
                 # get the word distribution and select the one with the
                 # highest probability as the next input. Save the prediction result
                 top_val, top_inx = out.topk(1)
@@ -189,13 +188,12 @@ class AttnBasedDecoder(nn.Module):
                 predictions.append(pred)
                 last_pred_word = self.embed_tokens(pred)
 
-
         # collect outputs across time steps
-        if not self.is_testing:
-            x = torch.cat(outs, dim=0).view(seqlen, bsz, -1)
-            # T x B x C -> B x T x C
-            x = x.transpose(1, 0)
-        else:
+        x = torch.cat(outs, dim=0).view(seqlen, bsz, -1)
+        # T x B x C -> B x T x C
+        x = x.transpose(1, 0)
+
+        if self.is_testing:
             predictions = torch.stack(predictions, dim=1).view(bsz, seqlen)
 
         # srclen x tgtlen x bsz -> bsz x tgtlen x srclen

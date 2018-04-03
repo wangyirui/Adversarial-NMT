@@ -56,6 +56,10 @@ def add_optimization_args(parser):
                         help="Optimizer of choice for training. (default=Adam)")
     parser.add_argument("--learning_rate", "-lr", default=1e-3, type=float,
                         help="Learning rate of the optimization. (default=0.1)")
+    parser.add_argument("--g_learning_rate", "-glr", default=1e-3, type=float,
+                        help="Learning rate of the generator. (default=0.001)")
+    parser.add_argument("--d_learning_rate", "-dlr", default=1e-3, type=float,
+                        help="Learning rate of the discriminator. (default=0.001)")
     parser.add_argument("--lr_shrink", default=0.5, type=float,
                         help='learning rate shrink factor, lr_new = (lr * lr_shrink)')
     parser.add_argument("--momentum", default=0.9, type=float,

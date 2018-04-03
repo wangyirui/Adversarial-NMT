@@ -1,3 +1,10 @@
+'''
+
+This code is adapted from Facebook Fairseq-py
+Visit https://github.com/facebookresearch/fairseq-py for more information
+
+'''
+
 import contextlib
 import itertools
 import glob
@@ -123,7 +130,7 @@ class LanguageDatasets(object):
         assert self.src_dict.unk() == self.dst_dict.unk()
 
     def train_dataloader(self, split, max_tokens=None,
-                         max_sentences=None, max_positions=(50, 50),
+                         max_sentences=None, max_positions=(1024, 1024),
                          seed=None, epoch=1, sample_without_replacement=0,
                          sort_by_source_size=False, shard_id=0, num_shards=1):
         dataset = self.splits[split]
@@ -138,8 +145,9 @@ class LanguageDatasets(object):
             dataset, collate_fn=dataset.collater,
             batch_sampler=batch_sampler)
 
+
     def eval_dataloader(self, split, num_workers=0, max_tokens=None,
-                        max_sentences=None, max_positions=(50, 50),
+                        max_sentences=None, max_positions=(1024, 1024),
                         skip_invalid_size_inputs_valid_test=False,
                         descending=False, shard_id=0, num_shards=1):
         dataset = self.splits[split]
@@ -243,7 +251,6 @@ class LanguagePairDataset(torch.utils.data.Dataset):
     @staticmethod
     def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False):
         size = max(v.size(0) for v in values)
-
         res = values[0].new(len(values), size).fill_(pad_idx)
 
         def copy_tensor(src, dst):
@@ -319,8 +326,9 @@ def _make_batches(src, dst, indices, max_tokens, max_sentences, max_positions,
         print("Warning! {} samples are either too short or too long "
               "and will be ignored, first few sample ids={}".format(len(ignored), ignored[:10]))
 
+
 def batches_by_size(src, dst, max_tokens=None, max_sentences=None,
-                    max_positions=(50, 50), ignore_invalid_inputs=False,
+                    max_positions=(1024, 1024), ignore_invalid_inputs=False,
                     descending=False):
     """Returns batches of indices sorted by size. Sequences with different
     source lengths are not allowed in the same batch."""
@@ -338,7 +346,7 @@ def batches_by_size(src, dst, max_tokens=None, max_sentences=None,
 
 
 def shuffled_batches_by_size(src, dst, max_tokens=None, max_sentences=None,
-                             epoch=1, sample=0, max_positions=(50, 50),
+                             epoch=1, sample=0, max_positions=(1024, 1024),
                              sort_by_source_size=False):
     """Returns batches of indices, bucketed by size and then shuffled. Batches
     may contain sequences of different lengths."""

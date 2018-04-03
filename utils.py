@@ -1,9 +1,9 @@
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree. An additional grant of patent rights
-# can be found in the PATENTS file in the same directory.
+'''
+
+This code is adapted from Facebook Fairseq-py
+Visit https://github.com/facebookresearch/fairseq-py for more information
+
+'''
 
 from collections import defaultdict
 import contextlib
@@ -16,32 +16,59 @@ from torch.autograd import Variable
 from torch.serialization import default_restore_location
 
 
-def buffered_arange(max):
-    if not hasattr(buffered_arange, 'buf'):
-        buffered_arange.buf = torch.LongTensor()
-    if max > buffered_arange.buf.numel():
-        torch.arange(max, out=buffered_arange.buf)
-    return buffered_arange.buf[:max]
+def make_variable(sample, cuda=False):
+    """Wrap input tensors in Variable class."""
+
+    if len(sample) == 0:
+        return {}
+
+    def _make_variable(maybe_tensor):
+        if torch.is_tensor(maybe_tensor):
+            if cuda and torch.cuda.is_available():
+                maybe_tensor = maybe_tensor.cuda()
+                return Variable(maybe_tensor)
+        elif isinstance(maybe_tensor, dict):
+            return {
+                key: _make_variable(value)
+                for key, value in maybe_tensor.items()
+            }
+        elif isinstance(maybe_tensor, list):
+            return [_make_variable(x) for x in maybe_tensor]
+        else:
+            return maybe_tensor
+
+    return _make_variable(sample)
+
+def strip_pad(tensor, pad):
+    return tensor[tensor.ne(pad)]
 
 
-def convert_padding_direction(
-    src_tokens,
-    src_lengths,
-    padding_idx,
-    right_to_left=False,
-    left_to_right=False,
-):
-    assert right_to_left ^ left_to_right
-    pad_mask = src_tokens.eq(padding_idx)
-    if pad_mask.max() == 0:
-        # no padding, return early
-        return src_tokens
-    max_len = src_tokens.size(1)
-    range = buffered_arange(max_len).type_as(src_tokens).expand_as(src_tokens)
-    num_pads = pad_mask.long().sum(dim=1, keepdim=True)
-    if right_to_left:
-        index = torch.remainder(range - num_pads, max_len)
-    else:
-        index = torch.remainder(range + num_pads, max_len)
-    return src_tokens.gather(1, index)
+INCREMENTAL_STATE_INSTANCE_ID = defaultdict(lambda: 0)
+
+
+def _get_full_incremental_state_key(module_instance, key):
+    module_name = module_instance.__class__.__name__
+
+    # assign a unique ID to each module instance, so that incremental state is
+    # not shared across module instances
+    if not hasattr(module_instance, '_fairseq_instance_id'):
+        INCREMENTAL_STATE_INSTANCE_ID[module_name] += 1
+        module_instance._fairseq_instance_id = INCREMENTAL_STATE_INSTANCE_ID[module_name]
+
+    return '{}.{}.{}'.format(module_name, module_instance._fairseq_instance_id, key)
+
+
+def get_incremental_state(module, incremental_state, key):
+    """Helper for getting incremental state for an nn.Module."""
+    full_key = _get_full_incremental_state_key(module, key)
+    if incremental_state is None or full_key not in incremental_state:
+        return None
+    return incremental_state[full_key]
+
+
+def set_incremental_state(module, incremental_state, key, value):
+    """Helper for setting incremental state for an nn.Module."""
+    if incremental_state is not None:
+        full_key = _get_full_incremental_state_key(module, key)
+        incremental_state[full_key] = value
 
