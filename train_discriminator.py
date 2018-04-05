@@ -178,8 +178,8 @@ def train_d(args, dataset):
                 with torch.no_grad():
                     dis_input_tokens = translator.generate_translation_tokens(sample,
                                                                         beam_size=args.beam,
-                                                                        maxlen_a=args.maxken_a,
-                                                                        maxlen_b=args.maxlen_b,
+                                                                        maxlen_a=args.max_len_a,
+                                                                        maxlen_b=args.max_len_b,
                                                                         nbest=args.nbest)
                     labels = Variable(torch.zeros(sample['target'].size(0)).float())
 
