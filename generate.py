@@ -1,17 +1,13 @@
-from __future__ import print_function
-
 import argparse
-import dill
 import logging
 
 import torch
 from torch import cuda
-from torch.autograd import Variable
-from generator import NMT
 import options
 import data
-from meters import AverageMeter
-import numpy as np
+from generator import LSTMModel
+
+from sequence_generator import SequenceGenerator
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s: %(message)s',
@@ -22,10 +18,10 @@ parser = argparse.ArgumentParser(description="Driver program for JHU Adversarial
 # Load args
 options.add_general_args(parser)
 options.add_dataset_args(parser)
-options.add_checkpoint_args(parser, inference=True)
+options.add_checkpoint_args(parser)
 options.add_distributed_training_args(parser)
 options.add_generation_args(parser)
-
+options.add_generator_model_args(parser)
 
 def main(args):
 
@@ -34,22 +30,57 @@ def main(args):
     cuda.set_device(args.gpuid[0])
 
     # Load dataset
-    splits = ['test']
-    if data.has_binary_files(args.data, splits):
+    if args.replace_unk is None:
       dataset = data.load_dataset(
-        args.data, splits, args.src_lang, args.trg_lang)
+        args.data,
+        ['test'],
+        args.src_lang,
+        args.trg_lang,
+      )
     else:
       dataset = data.load_raw_text_dataset(
-        args.data, splits, args.src_lang, args.trg_lang)
+        args.data,
+        ['test'],
+        args.src_lang,
+        args.trg_lang,
+      )
+
+
     if args.src_lang is None or args.trg_lang is None:
       # record inferred languages in args, so that it's saved in checkpoints
       args.src_lang, args.trg_lang = dataset.src, dataset.dst
+
     print('| [{}] dictionary: {} types'.format(dataset.src, len(dataset.src_dict)))
     print('| [{}] dictionary: {} types'.format(dataset.dst, len(dataset.dst_dict)))
-    for split in splits:
-      print('| {} {} {} examples'.format(args.data, split, len(dataset.splits[split])))
+    print('| {} {} {} examples'.format(args.data, 'test', len(dataset.splits['test'])))
 
-  max_positions = 1e5
+  # Set model parameters
+  args.encoder_embed_dim = 1000
+  args.encoder_layers = 4
+  args.encoder_dropout_out = 0
+  args.decoder_embed_dim = 1000
+  args.decoder_layers = 4
+  args.decoder_out_embed_dim = 1000
+  args.decoder_dropout_out = 0
+  args.bidirectional = False
+
+  # Build model
+  generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+  model_dict = generator.state_dict()
+  pretrained_dict = torch.load(args.model_file)
+  # 1. filter out unnecessary keys
+  pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+  # 2. overwrite entries in the existing state dict
+  model_dict.update(pretrained_dict)
+  # 3. load the new state dict
+  generator.load_state_dict(model_dict)
+
+  if use_cuda > 0:
+    generator.cuda()
+  else:
+    generator.cpu()
+
+  max_positions = generator.encoder.max_positions()
 
   itr = dataset.eval_dataloader(
     'test',
@@ -58,42 +89,38 @@ def main(args):
     skip_invalid_size_inputs_valid_test=args.skip_invalid_size_inputs_valid_test,
   )
 
-  generator = torch.load(args.model_file)
-  generator.decoder.is_testing = True
-  generator.eval()
+  translator = SequenceGenerator(
+    generator, beam_size=args.beam, stop_early=(not args.no_early_stop),
+    normalize_scores=(not args.unnormalized), len_penalty=args.lenpen,
+    unk_penalty=args.unkpen)
 
-  if use_cuda > 0:
-    generator.cuda()
-  else:
-    generator.cpu()
+  if use_cuda:
+    translator.cuda()
+
 
   with open('translation.txt', 'wb') as translation_writer:
     with open('ground_truth.txt', 'wb') as ground_truth_writer:
-      for i, sample in enumerate(itr):
-        if use_cuda:
-          sample['id'] = sample['id'].cuda()
-          sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
-          sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
-          sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
-          sample['target'] = sample['target'].cuda()
 
-        with torch.no_grad():
-          _, prediction = generator(sample)
+      translations = translator.generate_batched_itr(
+        itr, maxlen_a=args.max_len_a, maxlen_b=args.max_len_b, cuda=use_cuda)
 
-        bsz = prediction.size(0)
-        for idx in range(bsz):
-          # get translation sentence (without replacing bpe symbol)
-          target_str = dataset.dst_dict.string(prediction[idx, :], bpe_symbol=args.remove_bpe, escape_unk=True)
-          ground_truth = dataset.dst_dict.string(sample['target'][idx, :], bpe_symbol=args.remove_bpe, escape_unk=True)
+      for sample_id, src_tokens, target_tokens, hypos in translations:
+        # Process input and ground truth
+        target_tokens = target_tokens.int().cpu()
+        src_str = dataset.src_dict.string(src_tokens, args.remove_bpe)
+        target_str = dataset.dst_dict.string(target_tokens, args.remove_bpe, escape_unk=True)
+
+        # Process top predictions
+        for i, hypo in enumerate(hypos[:min(len(hypos), args.nbest)]):
+          hypo_tokens = hypo['tokens'].int().cpu()
+          hypo_str = dataset.dst_dict.string(hypo_tokens, args.remove_bpe)
+
+          hypo_str += '\n'
           target_str += '\n'
-          ground_truth += '\n'
 
-          translation_writer.write(target_str.encode('utf-8'))
-          ground_truth_writer.write(ground_truth.encode('utf-8'))
+          translation_writer.write(hypo_str.encode('utf-8'))
+          ground_truth_writer.write(target_str.encode('utf-8'))
 
-        progress = float(i + 1) * 100 / len(itr)
-        if progress % 5 == 0:
-          print("{0:.3f}% is translated...".format(progress))
 
 
 if __name__ == "__main__":

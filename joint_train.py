@@ -13,6 +13,7 @@ from torch import cuda
 from torch.autograd import Variable
 
 import data
+import utils
 from meters import AverageMeter
 from discriminator import Discriminator
 from generator import LSTMModel
@@ -36,6 +37,7 @@ options.add_optimization_args(parser)
 options.add_checkpoint_args(parser)
 options.add_generator_model_args(parser)
 options.add_discriminator_model_args(parser)
+options.add_generation_args(parser)
 
 def main(args):
     use_cuda = (len(args.gpuid) >= 1)
@@ -83,12 +85,21 @@ def main(args):
     args.bidirectional = False
 
     # try to load generator model
-    g_model_path = 'checkpoints/generator/nll_3.264.epoch_4.pt'
+    g_model_path = 'checkpoints/generator/best_gmodel.pt'
     if not os.path.exists(g_model_path):
         print("Start training generator!")
         train_g(args, dataset)
     assert os.path.exists(g_model_path)
-    generator = torch.load(g_model_path)
+    generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+    model_dict = generator.state_dict()
+    pretrained_dict = torch.load(g_model_path)
+    # 1. filter out unnecessary keys
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    # 2. overwrite entries in the existing state dict
+    model_dict.update(pretrained_dict)
+    # 3. load the new state dict
+    generator.load_state_dict(model_dict)
+
     print("Generator has successfully loaded!")
 
     # try to load discriminator model
@@ -98,7 +109,15 @@ def main(args):
         train_d(args, dataset)
     assert  os.path.exists(d_model_path)
     discriminator = Discriminator(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
-    discriminator.load_state_dict(torch.load(d_model_path))
+    model_dict = discriminator.state_dict()
+    pretrained_dict = torch.load(d_model_path)
+    # 1. filter out unnecessary keys
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    # 2. overwrite entries in the existing state dict
+    model_dict.update(pretrained_dict)
+    # 3. load the new state dict
+    generator.load_state_dict(model_dict)
+
     print("Discriminator has successfully loaded!")
 
     if use_cuda:
@@ -125,8 +144,15 @@ def main(args):
         p.requires_grad = False
 
     # define optimizer
-    g_optimizer = eval("torch.optim." + args.g_optimizer)(filter(lambda x: x.requires_grad, generator.parameters()), args.g_learning_rate)
-    d_optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()), args.d_learning_rate, momentum=args.momentum, nesterov=True)
+    g_optimizer = eval("torch.optim." + args.g_optimizer)(filter(lambda x: x.requires_grad,
+                                                                 generator.parameters()),
+                                                          args.g_learning_rate)
+
+    d_optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad,
+                                                                 discriminator.parameters()),
+                                                          args.d_learning_rate,
+                                                          momentum=args.momentum,
+                                                          nesterov=True)
 
     # start joint training
     best_dev_loss = math.inf
@@ -138,7 +164,7 @@ def main(args):
         # seed = args.seed + epoch_i
         # torch.manual_seed(seed)
 
-        max_positions_train = (args.pad_dim, args.pad_dim)
+        max_positions_train = (args.fixed_max_len, args.fixed_max_len)
 
         # Initialize dataloader, starting at batch_offset
         itr = dataset.train_dataloader(
@@ -169,11 +195,8 @@ def main(args):
 
         for i, sample in enumerate(itr):
             if use_cuda:
-                sample['id'] = sample['id'].cuda()
-                sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
-                sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
-                sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
-                sample['target'] = sample['target'].cuda()
+                # wrap input tensors in cuda tensors
+                sample = utils.make_variable(sample, cuda=cuda)
 
             ## part I: use gradient policy method to train the generator
 
@@ -272,7 +295,7 @@ def main(args):
         generator.eval()
         discriminator.eval()
         # Initialize dataloader
-        max_positions_valid = (args.pad_dim, args.pad_dim)
+        max_positions_valid = (args.fixed_max_len, args.fixed_max_len)
         itr = dataset.eval_dataloader(
             'valid',
             max_tokens=args.max_tokens,

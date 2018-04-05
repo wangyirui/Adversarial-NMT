@@ -10,7 +10,7 @@ import torch
 import utils
 import torch.nn.functional as F
 
-class SequenceGenerator(object):
+class BatchGenerator(object):
     def __init__(self, model, beam_size=1, minlen=1, maxlen=None,
                  stop_early=True, normalize_scores=True, len_penalty=1,
                  unk_penalty=0):
@@ -43,8 +43,7 @@ class SequenceGenerator(object):
         self.model.cuda()
         return self
 
-
-    def generate_batched_itr(self, data_itr, beam_size=None, maxlen_a=0.0, maxlen_b=None, cuda=False):
+    def generate_translation_tokens(self, sample, beam_size=None, maxlen_a=0.0, maxlen_b=None, nbest=1):
         """Iterate over a batched dataset and yield individual translations.
 
         Args:
@@ -55,22 +54,24 @@ class SequenceGenerator(object):
         if maxlen_b is None:
             maxlen_b = self.maxlen
 
-        for sample in data_itr:
-            s = utils.make_variable(sample, cuda=cuda)
-            input = s['net_input']
-            srclen = input['src_tokens'].size(1)
-            with torch.no_grad():
-                hypos = self.generate(
-                    input['src_tokens'],
-                    input['src_lengths'],
-                    beam_size=beam_size,
-                    maxlen=int(maxlen_a*srclen + maxlen_b)
-                )
-            for i, id in enumerate(s['id'].data):
-                src = input['src_tokens'].data[i, :]
-                # remove padding from ref
-                ref = utils.strip_pad(s['target'].data[i, :], self.pad)
-                yield id, src, ref, hypos[i]
+        input = sample['net_input']
+        srclen = input['src_tokens'].size(1)
+        with torch.no_grad():
+            hypos = self.generate(
+                input['src_tokens'],
+                input['src_lengths'],
+                beam_size=beam_size,
+                maxlen=int(maxlen_a*srclen + maxlen_b)
+            )
+
+        pred_tokens = input['src_tokens'].new(len(hypos), self.maxlen).fill_(self.pad)
+        for i, hypo in enumerate(hypos): # batch traverse
+            hypo_tokens = hypo[:min(len(hypo), nbest)][0]['tokens']
+            # truncate the prediction if exceeds the maxlen
+            hypo_tokens = hypo_tokens[:self.maxlen]
+            pred_tokens[i,:hypo_tokens.size(0)] = hypo_tokens
+
+        return pred_tokens
 
 
     def generate(self, src_tokens, src_lengths, beam_size=None, maxlen=None):

@@ -1,6 +1,3 @@
-
-import argparse
-import dill
 import logging
 import math
 import os
@@ -9,9 +6,9 @@ from collections import OrderedDict
 import torch
 from torch import cuda
 
-import data
+import utils
 from meters import AverageMeter
-from generator import NMT
+from generator import LSTMModel
 
 
 def train_g(args, dataset):
@@ -34,28 +31,34 @@ def train_g(args, dataset):
     logging_meters['update_times'] = AverageMeter()
 
     # Build model
-    generator = NMT(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda, is_testing=False)
-    generator.decoder.is_testing = False
+    generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
 
     if use_cuda:
         generator.cuda()
     else:
         generator.cpu()
 
-    criterion = torch.nn.NLLLoss(size_average = False, ignore_index = dataset.dst_dict.pad(),
-                                 reduce = True)
-
     optimizer = eval("torch.optim." + args.optimizer)(generator.parameters(), args.learning_rate)
 
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, factor=args.lr_shrink)
+
+    # Train until the learning rate gets too small
+    max_epoch = args.max_epoch or math.inf
+
+    epoch_i = 1
     best_dev_loss = math.inf
+    lr = optimizer.param_groups[0]['lr']
     # main training loop
-    for epoch_i in range(1, args.epochs + 1):
+    while lr > args.min_g_lr and epoch_i <= max_epoch:
         logging.info("At {0}-th epoch.".format(epoch_i))
 
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        max_positions_train = (args.max_source_positions, args.max_target_positions)
+        max_positions_train = (
+            min(args.max_source_positions, generator.encoder.max_positions()),
+            min(args.max_target_positions, generator.decoder.max_positions())
+        )
 
         # Initialize dataloader, starting at batch_offset
         itr = dataset.train_dataloader(
@@ -73,34 +76,27 @@ def train_g(args, dataset):
         # set training mode
         generator.train()
 
-        # # update learning rate if necessary
-        # update_learning_rate(epoch_i, args.lr_shrink, args.lr_shrink_from, optimizer)
-
         # reset meters
         for key, val in logging_meters.items():
             if val is not None:
                 val.reset()
 
-        # srange generates a lazy sequence of shuffled range
         for i, sample in enumerate(itr):
 
             if use_cuda:
-                sample['id'] = sample['id'].cuda()
-                sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
-                sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
-                sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
-                sample['target'] = sample['target'].cuda()
+                # wrap input tensors in cuda tensors
+                sample = utils.make_variable(sample, cuda=cuda)
 
-            sys_out_batch, _ = generator(sample)  # (trg_seq_len, batch_size, trg_vocab_size)
-            train_trg_batch = sample['target'].view(-1)
-            sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
-            loss = criterion(sys_out_batch, train_trg_batch)
+            loss = generator(sample)
             sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-            nsentences  = sample['target'].size(0)
+            nsentences = sample['target'].size(0)
             logging_loss = loss.data / sample_size / math.log(2)
             logging_meters['bsz'].update(nsentences)
             logging_meters['train_loss'].update(logging_loss, sample_size)
-            logging.debug("Generator loss at batch {0}: {1:.3f}, batch size: {2}".format(i, logging_meters['train_loss'].avg, round(logging_meters['bsz'].avg)))
+            logging.debug(
+                "g loss at batch {0}: {1:.3f}, batch size: {2}, lr={3}".format(i, logging_meters['train_loss'].avg,
+                                                                             round(logging_meters['bsz'].avg),
+                                                                             optimizer.param_groups[0]['lr']))
             optimizer.zero_grad()
             loss.backward()
 
@@ -113,9 +109,12 @@ def train_g(args, dataset):
             optimizer.step()
 
         # validation -- this is a crude estimation because there might be some padding at the end
-        # Initialize dataloader
-        max_positions_valid = (1e5, 1e5)
+        max_positions_valid = (
+            generator.encoder.max_positions(),
+            generator.decoder.max_positions(),
+        )
 
+        # Initialize dataloader
         itr = dataset.eval_dataloader(
             'valid',
             max_tokens=args.max_tokens,
@@ -137,32 +136,28 @@ def train_g(args, dataset):
         for i, sample in enumerate(itr):
             with torch.no_grad():
                 if use_cuda:
-                    sample['id'] = sample['id'].cuda()
-                    sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
-                    sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
-                    sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
-                    sample['target'] = sample['target'].cuda()
-                sys_out_batch, _ = generator(sample)
-                dev_trg_batch = sample['target'].view(-1)
-                sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
-                loss = criterion(sys_out_batch, dev_trg_batch)
+                    # wrap input tensors in cuda tensors
+                    sample = utils.make_variable(sample, cuda=cuda)
+                loss = generator(sample)
                 sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
                 loss = loss / sample_size / math.log(2)
                 logging_meters['valid_loss'].update(loss, sample_size)
-                logging.debug("Generator dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
+                logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
 
+        # update learning rate
+        lr_scheduler.step(logging_meters['valid_loss'].avg)
+        lr = optimizer.param_groups[0]['lr']
 
-        logging.info("Generator average loss value per instance is {0} at the end of epoch {1}".format(logging_meters['valid_loss'].avg, epoch_i))
-
-        torch.save(generator, open(checkpoints_path + "nll_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i), 'wb'), pickle_module=dill)
+        logging.info(
+            "Average g loss value per instance is {0} at the end of epoch {1}".format(logging_meters['valid_loss'].avg,
+                                                                                    epoch_i))
+        torch.save(generator.state_dict(), open(
+            checkpoints_path + "data.nll_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i), 'wb'))
 
         if logging_meters['valid_loss'].avg < best_dev_loss:
             best_dev_loss = logging_meters['valid_loss'].avg
-            torch.save(generator, open(checkpoints_path + "best_gmodel.pt", 'wb'), pickle_module=dill)
+            torch.save(generator.state_dict(), open(checkpoints_path + "best_gmodel.pt", 'wb'))
 
+        epoch_i += 1
 
-def update_learning_rate(current_epoch, lr_shrink, lr_shrink_from, optimizer):
-    if (current_epoch == lr_shrink_from):
-        for param_group in optimizer.param_groups:
-            param_group['lr'] *= lr_shrink
 
