@@ -50,6 +50,8 @@ def add_distributed_training_args(parser):
 def add_optimization_args(parser):
     parser.add_argument('--max-epoch', '--me', default=0, type=int, metavar='N',
                         help='force stop training at specified epoch')
+    parser.add_argument("--epochs", default=12, type=int,
+                        help="Epochs through the data. (default=12)")
     parser.add_argument("--optimizer", default="Adam", choices=["SGD", "Adadelta", "Adam"],
                         help="Optimizer of choice for training. (default=Adam)")
     parser.add_argument("--g_optimizer", default="SGD", choices=["SGD", "Adadelta", "Adam"],
@@ -72,8 +74,6 @@ def add_optimization_args(parser):
                         help="Whether use early stopping criteria. (default=False)")
     parser.add_argument("--estop", default=1e-2, type=float,
                         help="Early stopping criteria on the development set. (default=1e-2)")
-    parser.add_argument("--epochs", default=12, type=int,
-                        help="Epochs through the data. (default=12)")
     parser.add_argument('--clip-norm', default=5.0, type=float,
                        help='clip threshold of gradients')
     parser.add_argument('--curriculum', default=0, type=int, metavar='N',
@@ -89,10 +89,8 @@ def add_optimization_args(parser):
     return parser
 
 
-def add_checkpoint_args(parser, inference=False):
-    if inference:
-        parser.add_argument("--model_file", required=True,
-                            help="Location to dump the models.")
+def add_checkpoint_args(parser):
+    parser.add_argument("--model_file", help="Location to dump the models.")
     return parser
 
 def add_generator_model_args(parser):

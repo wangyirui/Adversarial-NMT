@@ -93,19 +93,19 @@ class LSTMEncoder(nn.Module):
         # B x T x C -> T x B x C
         x = x.transpose(0, 1)
 
-        # pack embedded source tokens into a PackedSequence
-        packed_x = nn.utils.rnn.pack_padded_sequence(x, src_lengths.data.tolist())
+        # # pack embedded source tokens into a PackedSequence
+        # packed_x = nn.utils.rnn.pack_padded_sequence(x, src_lengths.data.tolist())
 
         # apply LSTM
         h0 = Variable(x.data.new(self.num_layers, bsz, embed_dim).zero_())
         c0 = Variable(x.data.new(self.num_layers, bsz, embed_dim).zero_())
-        packed_outs, (final_hiddens, final_cells) = self.lstm(
-            packed_x,
+        x, (final_hiddens, final_cells) = self.lstm(
+            x,
             (h0, c0),
         )
 
         # unpack outputs and apply dropout
-        x, _ = nn.utils.rnn.pad_packed_sequence(packed_outs, padding_value=0.)
+        # x, _ = nn.utils.rnn.pad_packed_sequence(packed_outs, padding_value=0.)
         x = F.dropout(x, p=self.dropout_out, training=self.training)
         assert list(x.size()) == [seqlen, bsz, embed_dim]
 

@@ -322,9 +322,9 @@ def _make_batches(src, dst, indices, max_tokens, max_sentences, max_positions,
     if len(batch) > 0:
         yield batch
 
-    if len(ignored) > 0:
-        print("Warning! {} samples are either too short or too long "
-              "and will be ignored, first few sample ids={}".format(len(ignored), ignored[:10]))
+    # if len(ignored) > 0:
+    #     print("Warning! {} samples are either too short or too long "
+    #           "and will be ignored, first few sample ids={}".format(len(ignored), ignored[:10]))
 
 
 def batches_by_size(src, dst, max_tokens=None, max_sentences=None,
@@ -361,9 +361,6 @@ def shuffled_batches_by_size(src, dst, max_tokens=None, max_sentences=None,
     # sort by sizes
     indices = indices[np.argsort(dst.sizes[indices], kind='mergesort')]
     indices = indices[np.argsort(src.sizes[indices], kind='mergesort')]
-
-    # descending order
-    indices = np.flip(indices, 0)
 
     batches = list(_make_batches(
         src, dst, indices, max_tokens, max_sentences, max_positions,

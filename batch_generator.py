@@ -64,12 +64,12 @@ class BatchGenerator(object):
                 maxlen=int(maxlen_a*srclen + maxlen_b)
             )
 
-        pred_tokens = input['src_tokens'].new(len(hypos), self.maxlen).fill_(self.pad)
-        for i, hypo in enumerate(hypos): # batch traverse
-            hypo_tokens = hypo[:min(len(hypo), nbest)][0]['tokens']
-            # truncate the prediction if exceeds the maxlen
-            hypo_tokens = hypo_tokens[:self.maxlen]
-            pred_tokens[i,:hypo_tokens.size(0)] = hypo_tokens
+            pred_tokens = input['src_tokens'].new(len(hypos), self.maxlen).fill_(self.pad)
+            for i, hypo in enumerate(hypos): # batch traverse
+                hypo_tokens = hypo[:min(len(hypo), nbest)][0]['tokens']
+                # truncate the prediction if exceeds the maxlen
+                hypo_tokens = hypo_tokens[:self.maxlen]
+                pred_tokens[i,:hypo_tokens.size(0)] = hypo_tokens
 
         return pred_tokens
 

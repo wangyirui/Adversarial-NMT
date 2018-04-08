@@ -120,6 +120,8 @@ def main(args):
 
     print("Discriminator has successfully loaded!")
 
+    return
+
     if use_cuda:
         discriminator.cuda()
         generator.cuda()
