@@ -51,8 +51,12 @@ def train_d(args, dataset):
     generator.load_state_dict(model_dict)
 
     if use_cuda:
-        discriminator.cuda()
-        generator.cuda()
+        if len(args.gpuid) > 1:
+            # generator = torch.nn.DataParallel(generator).cuda()
+            discriminator = torch.nn.DataParallel(discriminator).cuda()
+        else:
+            # generator.cuda()
+            discriminator.cuda()
     else:
         discriminator.cpu()
         generator.cpu()

@@ -41,8 +41,11 @@ options.add_generation_args(parser)
 
 def main(args):
     use_cuda = (len(args.gpuid) >= 1)
-    if args.gpuid:
-        cuda.set_device(args.gpuid[0])
+    if use_cuda:
+        if len(args.gpuid) == 1:
+            cuda.set_device(args.gpuid[0])
+        else:
+            cuda.set_device(args.gpuid)
 
     # Load dataset
     splits = ['train', 'valid']
