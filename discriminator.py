@@ -30,16 +30,13 @@ class Discriminator(nn.Module):
         self.fc = Linear(2 * sum(self.num_filters), 1)
 
     def forward(self, src_sentence, trg_sentence, pad_idx):
-        padded_src_sentence = src_sentence
-        padded_trg_sentence = trg_sentence
-        # padded_src_sentence = self.pad_sentences(src_sentence, pad_idx, self.fixed_max_len)
-        # padded_trg_sentence = self.pad_sentences(trg_sentence, pad_idx, self.fixed_max_len)
-        padded_src_embed = self.dropout_in(self.embed_src_tokens(src_sentence)).unsqueeze(1)
-        padded_trg_embed = self.dropout_out(self.embed_trg_tokens(trg_sentence)).unsqueeze(1)
+        padded_src_embed = self.embed_src_tokens(src_sentence)
+        padded_src_embed = self.dropout_in(padded_src_embed)
+        padded_src_embed = padded_src_embed.unsqueeze(1)
 
-        # padded_src_input = torch.stack([padded_src_embed]*self.fixed_max_len, dim=2)
-        # padded_trg_input = torch.stack([padded_trg_embed]*self.fixed_max_len, dim=3)
-        # padded_input = torch.cat([padded_src_input, padded_trg_input], dim=1)
+        padded_trg_embed = self.embed_src_tokens(trg_sentence)
+        padded_trg_embed = self.dropout_in(padded_trg_embed)
+        padded_trg_embed = padded_trg_embed.unsqueeze(1)
 
         batch_size = padded_src_embed.size(0)
         src_conv_out = self.conv2d(padded_src_embed).view(batch_size, -1)
@@ -116,7 +113,7 @@ def Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, **kwargs
     for name, param in m.named_parameters():
         if 'weight' in name:
             # param.data.uniform_(-0.1, 0.1)
-            nn.init.xavier_uniform(param.data)
+            nn.init.kaiming_uniform_(param.data)
         elif 'bias' in name:
             param.data.uniform_(-0.1, 0.1)
     return m
@@ -125,7 +122,7 @@ def Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, **kwargs
 def Linear(in_features, out_features, bias=True, dropout=0):
     """Weight-normalized Linear layer (input: N x T x C)"""
     m = nn.Linear(in_features, out_features, bias=bias)
-    nn.init.xavier_uniform(m.weight.data)
+    nn.init.kaiming_uniform_(m.weight.data)
     if bias:
         m.bias.data.uniform_(-0.1, 0.1)
     return m
