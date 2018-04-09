@@ -17,38 +17,39 @@ class Discriminator(nn.Module):
 
         self.kernel_sizes = [i for i in range(1, args.fixed_max_len, 4)]
         self.num_filters = [100 + i * 10 for i in range(1, args.fixed_max_len, 4)]
+        # self.kernel_sizes = [1,5,10,15]
+        # self.num_filters = [100, 150, 200, 250]
 
         self.embed_src_tokens = Embedding(len(src_dict), args.encoder_embed_dim, src_dict.pad())
         self.embed_trg_tokens = Embedding(len(dst_dict), args.decoder_embed_dim, dst_dict.pad())
 
         self.conv2d = ConvlutionLayer(args, self.kernel_sizes, self.num_filters)
         self.highway = HighwayMLP(sum(self.num_filters), nn.functional.relu, nn.functional.sigmoid)
-        self.fc = Linear(2 * sum(self.num_filters), 2)
+        self.dropout_in = nn.Dropout2d(p=0.2)
+        self.dropout_out = nn.Dropout2d(p=0.5)
+        self.fc = Linear(2 * sum(self.num_filters), 1)
 
     def forward(self, src_sentence, trg_sentence, pad_idx):
         padded_src_sentence = src_sentence
         padded_trg_sentence = trg_sentence
         # padded_src_sentence = self.pad_sentences(src_sentence, pad_idx, self.fixed_max_len)
         # padded_trg_sentence = self.pad_sentences(trg_sentence, pad_idx, self.fixed_max_len)
-        padded_src_embed = self.embed_src_tokens(padded_src_sentence)
-        padded_trg_embed = self.embed_trg_tokens(padded_trg_sentence)
-        padded_src_embed = padded_src_embed.unsqueeze(1)
-        padded_trg_embed = padded_trg_embed.unsqueeze(1)
+        padded_src_embed = self.dropout_in(self.embed_src_tokens(src_sentence)).unsqueeze(1)
+        padded_trg_embed = self.dropout_out(self.embed_trg_tokens(trg_sentence)).unsqueeze(1)
 
         # padded_src_input = torch.stack([padded_src_embed]*self.fixed_max_len, dim=2)
         # padded_trg_input = torch.stack([padded_trg_embed]*self.fixed_max_len, dim=3)
         # padded_input = torch.cat([padded_src_input, padded_trg_input], dim=1)
 
-        src_conv_out = self.conv2d(padded_src_embed)
-        trg_conv_out = self.conv2d(padded_trg_embed)
         batch_size = padded_src_embed.size(0)
-        src_out_flat = src_conv_out.view(batch_size, -1)
-        trg_out_flat = trg_conv_out.view(batch_size, -1)
-        src_highway_out = self.highway(src_out_flat)
-        trg_highway_out = self.highway(trg_out_flat)
+        src_conv_out = self.conv2d(padded_src_embed).view(batch_size, -1)
+        trg_conv_out = self.conv2d(padded_trg_embed).view(batch_size, -1)
+
+        src_highway_out = self.dropout_out(self.highway(src_conv_out))
+        trg_highway_out = self.dropout_out(self.highway(trg_conv_out))
+
         concat_out = torch.cat([src_highway_out, trg_highway_out], dim=1)
-        scores = self.fc(concat_out)
-        scores = F.softmax(scores, dim=1)
+        scores = F.sigmoid(self.fc(concat_out))
 
         return scores
 
@@ -68,9 +69,9 @@ class ConvlutionLayer(nn.Module):
 
         self.conv2d = nn.ModuleList([
             nn.Sequential(
-                Conv2d(in_channels=1 if i == 0 else num_filters[i - 1],
+                Conv2d(in_channels=1,
                        out_channels=num_filters[i],
-                       kernel_size=self.kernel_sizes[i],
+                       kernel_size=(kernel_sizes[i], args.decoder_embed_dim),
                        stride=1,
                        padding=0),
                 nn.BatchNorm2d(num_filters[i]),
@@ -81,10 +82,10 @@ class ConvlutionLayer(nn.Module):
         ])
 
     def forward(self, input):
-        x = input
         out = []
         for i, conv2d in enumerate(self.conv2d):
-            x = conv2d(x)
+            x = conv2d(input)
+            x = x.permute(0, 2, 3, 1)
             out.append(x)
 
         out = torch.cat(out, dim=3)

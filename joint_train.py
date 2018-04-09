@@ -51,10 +51,10 @@ def main(args):
     splits = ['train', 'valid']
     if data.has_binary_files(args.data, splits):
         dataset = data.load_dataset(
-            args.data, splits, args.src_lang, args.trg_lang)
+            args.data, splits, args.src_lang, args.trg_lang, args.fixed_max_len)
     else:
         dataset = data.load_raw_text_dataset(
-            args.data, splits, args.src_lang, args.trg_lang)
+            args.data, splits, args.src_lang, args.trg_lang, args.fixed_max_len)
     if args.src_lang is None or args.trg_lang is None:
         # record inferred languages in args, so that it's saved in checkpoints
         args.src_lang, args.trg_lang = dataset.src, dataset.dst

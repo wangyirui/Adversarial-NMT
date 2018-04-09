@@ -44,7 +44,7 @@ def load_dictionaries(path, src_lang, dst_lang):
     return src_dict, dst_dict
 
 
-def load_dataset(path, load_splits, src=None, dst=None):
+def load_dataset(path, load_splits, src=None, dst=None, maxlen=None):
     """Loads specified data splits (e.g., test, train or valid) from the
     specified folder and check that files exist."""
     if src is None and dst is None:
@@ -88,12 +88,13 @@ def load_dataset(path, load_splits, src=None, dst=None):
                 IndexedInMemoryDataset(dst_path),
                 pad_idx=dataset.src_dict.pad(),
                 eos_idx=dataset.src_dict.eos(),
+                maxlen=maxlen
             )
 
     return dataset
 
 
-def load_raw_text_dataset(path, load_splits, src=None, dst=None):
+def load_raw_text_dataset(path, load_splits, src=None, dst=None, maxlen=None):
     """Loads specified data splits (e.g., test, train or valid) from raw text
     files in the specified folder."""
     if src is None and dst is None:
@@ -113,6 +114,7 @@ def load_raw_text_dataset(path, load_splits, src=None, dst=None):
             IndexedRawTextDataset(dst_path, dst_dict),
             pad_idx=dataset.src_dict.pad(),
             eos_idx=dataset.src_dict.eos(),
+            maxlen=maxlen
         )
     return dataset
 
@@ -185,11 +187,12 @@ class LanguagePairDataset(torch.utils.data.Dataset):
     LEFT_PAD_SOURCE = False
     LEFT_PAD_TARGET = False
 
-    def __init__(self, src, dst, pad_idx, eos_idx):
+    def __init__(self, src, dst, pad_idx, eos_idx, maxlen=None):
         self.src = src
         self.dst = dst
         self.pad_idx = pad_idx
         self.eos_idx = eos_idx
+        self.maxlen = maxlen
 
     def __getitem__(self, i):
         # subtract 1 for 0-based indexing
@@ -205,17 +208,16 @@ class LanguagePairDataset(torch.utils.data.Dataset):
         return len(self.src)
 
     def collater(self, samples):
-        return LanguagePairDataset.collate(samples, self.pad_idx, self.eos_idx)
+        return LanguagePairDataset.collate(samples, self.pad_idx, self.eos_idx, self.maxlen)
 
     @staticmethod
-    def collate(samples, pad_idx, eos_idx):
+    def collate(samples, pad_idx, eos_idx, maxlen):
         if len(samples) == 0:
             return {}
-
         def merge(key, left_pad, move_eos_to_beginning=False):
             return LanguagePairDataset.collate_tokens(
                 [s[key] for s in samples],
-                pad_idx, eos_idx, left_pad, move_eos_to_beginning,
+                pad_idx, eos_idx, left_pad, move_eos_to_beginning, maxlen
             )
 
         id = torch.LongTensor([s['id'] for s in samples])
@@ -249,8 +251,8 @@ class LanguagePairDataset(torch.utils.data.Dataset):
         }
 
     @staticmethod
-    def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False):
-        size = max(v.size(0) for v in values)
+    def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False, maxlen=None):
+        size = max(v.size(0) for v in values) if maxlen is None else maxlen
         res = values[0].new(len(values), size).fill_(pad_idx)
 
         def copy_tensor(src, dst):

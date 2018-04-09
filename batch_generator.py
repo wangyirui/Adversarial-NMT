@@ -43,7 +43,7 @@ class BatchGenerator(object):
         self.model.cuda()
         return self
 
-    def generate_translation_tokens(self, sample, beam_size=None, maxlen_a=0.0, maxlen_b=None, nbest=1):
+    def generate_translation_tokens(self, sample, beam_size=None, maxlen_a=0.0, maxlen_b=None, nbest=1, max_res=None):
         """Iterate over a batched dataset and yield individual translations.
 
         Args:
@@ -53,6 +53,9 @@ class BatchGenerator(object):
         """
         if maxlen_b is None:
             maxlen_b = self.maxlen
+
+        if max_res is None:
+            max_res = maxlen_b
 
         input = sample['net_input']
         srclen = input['src_tokens'].size(1)
@@ -64,11 +67,11 @@ class BatchGenerator(object):
                 maxlen=int(maxlen_a*srclen + maxlen_b)
             )
 
-            pred_tokens = input['src_tokens'].new(len(hypos), self.maxlen).fill_(self.pad)
+            pred_tokens = input['src_tokens'].new(len(hypos), max_res).fill_(self.pad)
             for i, hypo in enumerate(hypos): # batch traverse
                 hypo_tokens = hypo[:min(len(hypo), nbest)][0]['tokens']
                 # truncate the prediction if exceeds the maxlen
-                hypo_tokens = hypo_tokens[:self.maxlen]
+                hypo_tokens = hypo_tokens[:max_res]
                 pred_tokens[i,:hypo_tokens.size(0)] = hypo_tokens
 
         return pred_tokens
