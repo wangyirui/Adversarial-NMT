@@ -20,7 +20,7 @@ def train_d(args, dataset):
         format='%(asctime)s %(levelname)s: %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
 
-    use_cuda = (len(args.gpuid) >= 1)
+    use_cuda = (torch.cuda.device_count() >= 1)
 
     # check checkpoints saving path
     if not os.path.exists('checkpoints/discriminator'):
@@ -51,7 +51,7 @@ def train_d(args, dataset):
     generator.load_state_dict(model_dict)
 
     if use_cuda:
-        if len(args.gpuid) > 1:
+        if torch.cuda.device_count() > 1:
             generator = torch.nn.DataParallel(generator).cuda()
             discriminator = torch.nn.DataParallel(discriminator).cuda()
         else:

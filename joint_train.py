@@ -40,7 +40,9 @@ options.add_discriminator_model_args(parser)
 options.add_generation_args(parser)
 
 def main(args):
-    use_cuda = (len(args.gpuid) >= 1)
+    print("{0} GPUs (#{1}) are running...".format(torch.cuda.device_count(), torch.cuda.current_device()))
+
+    use_cuda = (torch.cuda.device_count() >= 1)
 
     # Load dataset
     splits = ['train', 'valid']
