@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F 
-from torch.autograd import Variable
-import numpy as np
-import generator
+
 
 class Discriminator(nn.Module):
     def __init__(self, args, src_dict, dst_dict, use_cuda = True):
@@ -39,14 +37,19 @@ class Discriminator(nn.Module):
         padded_trg_embed = padded_trg_embed.unsqueeze(1)
 
         batch_size = padded_src_embed.size(0)
-        src_conv_out = self.conv2d(padded_src_embed).view(batch_size, -1)
-        trg_conv_out = self.conv2d(padded_trg_embed).view(batch_size, -1)
+        src_conv_out = self.conv2d(padded_src_embed)
+        src_conv_out = src_conv_out.view(batch_size, -1)
+        trg_conv_out = self.conv2d(padded_trg_embed)
+        trg_conv_out = trg_conv_out.view(batch_size, -1)
 
-        src_highway_out = self.dropout_out(self.highway(src_conv_out))
-        trg_highway_out = self.dropout_out(self.highway(trg_conv_out))
+        src_highway_out = self.highway(src_conv_out)
+        src_highway_out = self.dropout_out(src_highway_out)
+        trg_highway_out = self.highway(trg_conv_out)
+        trg_highway_out = self.dropout_out(trg_highway_out)
 
         concat_out = torch.cat([src_highway_out, trg_highway_out], dim=1)
-        scores = F.sigmoid(self.fc(concat_out))
+        scores = self.fc(concat_out)
+        scores = F.sigmoid(scores)
 
         return scores
 
@@ -113,7 +116,7 @@ def Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, **kwargs
     for name, param in m.named_parameters():
         if 'weight' in name:
             # param.data.uniform_(-0.1, 0.1)
-            nn.init.kaiming_uniform_(param.data)
+            nn.init.xavier_normal_(param.data)
         elif 'bias' in name:
             param.data.uniform_(-0.1, 0.1)
     return m
@@ -122,7 +125,7 @@ def Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, **kwargs
 def Linear(in_features, out_features, bias=True, dropout=0):
     """Weight-normalized Linear layer (input: N x T x C)"""
     m = nn.Linear(in_features, out_features, bias=bias)
-    nn.init.kaiming_uniform_(m.weight.data)
+    nn.init.xavier_normal_(m.weight.data)
     if bias:
         m.bias.data.uniform_(-0.1, 0.1)
     return m

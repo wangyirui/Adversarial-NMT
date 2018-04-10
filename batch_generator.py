@@ -7,7 +7,6 @@ Visit https://github.com/facebookresearch/fairseq-py for more information
 
 import math
 import torch
-import utils
 import torch.nn.functional as F
 
 class BatchGenerator(object):

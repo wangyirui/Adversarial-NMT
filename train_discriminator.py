@@ -1,12 +1,10 @@
-import torch
-from torch import cuda
-from torch.autograd import Variable
-
 import logging
 import os
 import math
-import numpy as np
 from collections import OrderedDict
+
+import torch
+from torch import cuda
 
 import utils
 from meters import AverageMeter
@@ -51,12 +49,8 @@ def train_d(args, dataset):
     generator.load_state_dict(model_dict)
 
     if use_cuda:
-        if torch.cuda.device_count() > 1:
-            generator = torch.nn.DataParallel(generator).cuda()
-            discriminator = torch.nn.DataParallel(discriminator).cuda()
-        else:
-            generator.cuda()
-            discriminator.cuda()
+        generator.cuda()
+        discriminator.cuda()
     else:
         discriminator.cpu()
         generator.cpu()
@@ -111,13 +105,11 @@ def train_d(args, dataset):
 
         # training process
         for i, sample in enumerate(itr):
-            if use_cuda:
-                # wrap input tensors in cuda tensors
-                sample = utils.make_variable(sample, cuda=cuda)
-
             with torch.no_grad():
-
-                neg_tokens = translator.generate_translation_tokens(sample, beam_size=args.beam, maxlen_a=args.max_len_a,
+                if use_cuda:
+                    # wrap input tensors in cuda tensors
+                    sample = utils.make_variable(sample, cuda=cuda)
+                    neg_tokens = translator.generate_translation_tokens(sample, beam_size=args.beam, maxlen_a=args.max_len_a,
                                                                     maxlen_b=args.max_len_b, nbest=args.nbest, max_res=args.fixed_max_len)
                 neg_labels = sample['target'].new(neg_tokens.size(0), 1).fill_(0).float()
 
@@ -128,7 +120,7 @@ def train_d(args, dataset):
                 src_tokens = torch.cat([sample['net_input']['src_tokens']]*2, dim=0)
                 trg_tokens = torch.cat([pos_tokens, neg_tokens], dim=0)
                 labels = torch.cat([pos_labels, neg_labels], dim=0)
-                indices = np.random.permutation(labels.size(0))
+                indices = torch.randperm(labels.size(0))
                 src_tokens = src_tokens[indices]
                 trg_tokens = trg_tokens[indices]
                 labels = labels[indices]
