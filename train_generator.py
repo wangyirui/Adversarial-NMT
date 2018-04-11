@@ -17,6 +17,7 @@ def train_g(args, dataset):
         datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
 
     use_cuda = (len(args.gpuid) >= 1)
+    print(cuda.current_device())
 
     # check checkpoints saving path
     if not os.path.exists('checkpoints/generator'):
