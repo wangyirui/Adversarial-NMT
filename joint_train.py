@@ -101,6 +101,8 @@ def main(args):
 
     print("Generator has successfully loaded!")
 
+    return
+
     # try to load discriminator model
     d_model_path = 'checkpoints/discriminator/best_dmodel.pt'
     if not os.path.exists(d_model_path):

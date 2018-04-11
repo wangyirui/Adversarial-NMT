@@ -10,7 +10,7 @@ import os
 import struct
 import torch
 
-from fairseq.tokenizer import Tokenizer
+from tokenizer import Tokenizer
 
 
 def read_longs(f, n):

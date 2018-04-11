@@ -34,7 +34,10 @@ def train_g(args, dataset):
     generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
 
     if use_cuda:
-        generator.cuda()
+        if cuda.device_count() > 1:
+            generator = torch.nn.DataParallel(generator)
+        else:
+            generator.cuda()
     else:
         generator.cpu()
 
@@ -90,7 +93,7 @@ def train_g(args, dataset):
             loss = generator(sample)
             sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
             nsentences = sample['target'].size(0)
-            logging_loss = loss.data / sample_size / math.log(2)
+            logging_loss = loss.cpu().data[0] / sample_size / math.log(2)
             logging_meters['bsz'].update(nsentences)
             logging_meters['train_loss'].update(logging_loss, sample_size)
             logging.debug(
@@ -134,15 +137,14 @@ def train_g(args, dataset):
                 val.reset()
 
         for i, sample in enumerate(itr):
-            with torch.no_grad():
-                if use_cuda:
-                    # wrap input tensors in cuda tensors
-                    sample = utils.make_variable(sample, cuda=cuda)
-                loss = generator(sample)
-                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-                loss = loss / sample_size / math.log(2)
-                logging_meters['valid_loss'].update(loss, sample_size)
-                logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
+            if use_cuda:
+                # wrap input tensors in cuda tensors
+                sample = utils.make_variable(sample, violitecuda=cuda, volatile=True)
+            loss = generator(sample)
+            sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
+            loss = loss / sample_size / math.log(2)
+            logging_meters['valid_loss'].update(loss, sample_size)
+            logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
 
         # update learning rate
         lr_scheduler.step(logging_meters['valid_loss'].avg)
