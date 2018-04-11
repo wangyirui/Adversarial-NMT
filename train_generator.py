@@ -20,7 +20,7 @@ def train_g(args, dataset):
 
     # check checkpoints saving path
     if not os.path.exists('checkpoints/generator'):
-        os.makedirs('checkpoints/ganerator')
+        os.makedirs('checkpoints/generator')
 
     checkpoints_path = 'checkpoints/generator/'
 
@@ -35,7 +35,9 @@ def train_g(args, dataset):
 
     if use_cuda:
         if cuda.device_count() > 1:
-            generator = torch.nn.DataParallel(generator)
+            generator.encoder = torch.nn.DataParallel(generator.encoder)
+            generator.decoder = torch.nn.DataParallel(generator.decoder)
+            generator.cuda()
         else:
             generator.cuda()
     else:
