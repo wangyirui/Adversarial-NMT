@@ -35,7 +35,7 @@ def train_g(args, dataset):
     generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
 
     if use_cuda:
-        if cuda.device_count() > 1:
+        if len(args.gpuid) > 1:
             generator = torch.nn.DataParallel(generator).cuda()
         else:
             generator.cuda()

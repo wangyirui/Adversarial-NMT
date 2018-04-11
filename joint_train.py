@@ -40,8 +40,9 @@ options.add_discriminator_model_args(parser)
 options.add_generation_args(parser)
 
 def main(args):
-
-    use_cuda = (torch.cuda.device_count() >= 1)
+    use_cuda = (len(args.gpuid) >= 1)
+    if args.gpuid:
+        cuda.set_device(args.gpuid)
 
     # Load dataset
     splits = ['train', 'valid']
