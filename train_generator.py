@@ -35,9 +35,7 @@ def train_g(args, dataset):
 
     if use_cuda:
         if cuda.device_count() > 1:
-            generator.encoder = torch.nn.DataParallel(generator.encoder)
-            generator.decoder = torch.nn.DataParallel(generator.decoder)
-            generator.cuda()
+            generator = torch.nn.DataParallel(generator).cuda()
         else:
             generator.cuda()
     else:
