@@ -41,8 +41,7 @@ options.add_generation_args(parser)
 
 def main(args):
     use_cuda = (len(args.gpuid) >= 1)
-    print(cuda.device_count())
-    print(cuda.current_device())
+    print("{0} GPU(s) are available".format(cuda.device_count()))
 
     # Load dataset
     splits = ['train', 'valid']
@@ -101,8 +100,6 @@ def main(args):
     generator.load_state_dict(model_dict)
 
     print("Generator has successfully loaded!")
-
-    return
 
     # try to load discriminator model
     d_model_path = 'checkpoints/discriminator/best_dmodel.pt'

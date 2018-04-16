@@ -118,7 +118,6 @@ def load_raw_text_dataset(path, load_splits, src=None, dst=None, maxlen=None):
         )
     return dataset
 
-
 class LanguageDatasets(object):
     def __init__(self, src, dst, src_dict, dst_dict):
         self.src = src
@@ -358,7 +357,10 @@ def shuffled_batches_by_size(src, dst, max_tokens=None, max_sentences=None,
     if max_sentences is None:
         max_sentences = float('Inf')
 
-    indices = np.random.permutation(len(src))
+    if sample:
+        indices = np.random.choice(len(src), sample, replace=False)
+    else:
+        indices = np.random.permutation(len(src))
 
     # sort by sizes
     indices = indices[np.argsort(dst.sizes[indices], kind='mergesort')]
@@ -371,21 +373,21 @@ def shuffled_batches_by_size(src, dst, max_tokens=None, max_sentences=None,
     if not sort_by_source_size:
         np.random.shuffle(batches)
 
-    if sample:
-        offset = (epoch - 1) * sample
-        while offset > len(batches):
-            np.random.shuffle(batches)
-            offset -= len(batches)
-
-        result = batches[offset:(offset + sample)]
-        while len(result) < sample:
-            np.random.shuffle(batches)
-            result += batches[:(sample - len(result))]
-
-        assert len(result) == sample, \
-            "batch length is not correct {}".format(len(result))
-
-        batches = result
+    # if sample:
+    #     offset = (epoch - 1) * sample
+    #     while offset > len(batches):
+    #         np.random.shuffle(batches)
+    #         offset -= len(batches)
+    #
+    #     result = batches[offset:(offset + sample)]
+    #     while len(result) < sample:
+    #         np.random.shuffle(batches)
+    #         result += batches[:(sample - len(result))]
+    #
+    #     assert len(result) == sample, \
+    #         "batch length is not correct {}".format(len(result))
+    #
+    #     batches = result
 
     return batches
 

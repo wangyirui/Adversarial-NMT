@@ -38,11 +38,14 @@ class BatchGenerator(object):
         self.len_penalty = len_penalty
         self.unk_penalty = unk_penalty
 
+        # use for debug
+        self.trauncate_cnt = 0
+
     def cuda(self):
         self.model.cuda()
         return self
 
-    def generate_translation_tokens(self, sample, beam_size=None, maxlen_a=0.0, maxlen_b=None, nbest=1, max_res=None):
+    def generate_translation_tokens(self, args, dataset, sample, beam_size=None, maxlen_a=0.0, maxlen_b=None, nbest=1):
         """Iterate over a batched dataset and yield individual translations.
 
         Args:
@@ -53,25 +56,29 @@ class BatchGenerator(object):
         if maxlen_b is None:
             maxlen_b = self.maxlen
 
-        if max_res is None:
-            max_res = maxlen_b
-
         input = sample['net_input']
         srclen = input['src_tokens'].size(1)
-        with torch.no_grad():
-            hypos = self.generate(
-                input['src_tokens'],
-                input['src_lengths'],
-                beam_size=beam_size,
-                maxlen=int(maxlen_a*srclen + maxlen_b)
-            )
+        # with torch.no_grad():
+        hypos = self.generate(
+            input['src_tokens'],
+            input['src_lengths'],
+            beam_size=beam_size,
+            maxlen=int(maxlen_a*srclen + maxlen_b)
+        )
+        # set the tensor has the same width as max possible translation
+        max_res = int(maxlen_a*srclen + maxlen_b)
+        pred_tokens = input['src_tokens'].new(len(hypos), max_res).fill_(self.pad)
+        for i, hypo in enumerate(hypos): # batch traverse
+            hypo_tokens = hypo[:min(len(hypo), nbest)][0]['tokens']
+            # hypo_str = dataset.dst_dict.string(hypo_tokens, args.remove_bpe)
+            # trg_str = dataset.dst_dict.string(sample['target'][i], args.remove_bpe)
+            # print("Trans: {0}".format(hypo_str))
+            # print("Target: {0}".format(trg_str))
 
-            pred_tokens = input['src_tokens'].new(len(hypos), max_res).fill_(self.pad)
-            for i, hypo in enumerate(hypos): # batch traverse
-                hypo_tokens = hypo[:min(len(hypo), nbest)][0]['tokens']
-                # truncate the prediction if exceeds the maxlen
+            # truncate the prediction if exceeds the maxlen
+            if hypo_tokens.size(0) > max_res:
                 hypo_tokens = hypo_tokens[:max_res]
-                pred_tokens[i,:hypo_tokens.size(0)] = hypo_tokens
+            pred_tokens[i,:hypo_tokens.size(0)] = hypo_tokens
 
         return pred_tokens
 

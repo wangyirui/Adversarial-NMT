@@ -93,7 +93,7 @@ def train_g(args, dataset):
             loss = generator(sample)
             sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
             nsentences = sample['target'].size(0)
-            logging_loss = loss.cpu().data[0] / sample_size / math.log(2)
+            logging_loss = loss.item() / sample_size / math.log(2)
             logging_meters['bsz'].update(nsentences)
             logging_meters['train_loss'].update(logging_loss, sample_size)
             logging.debug(
@@ -135,16 +135,16 @@ def train_g(args, dataset):
         for key, val in logging_meters.items():
             if val is not None:
                 val.reset()
-
-        for i, sample in enumerate(itr):
-            if use_cuda:
-                # wrap input tensors in cuda tensors
-                sample = utils.make_variable(sample, violitecuda=cuda, volatile=True)
-            loss = generator(sample)
-            sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-            loss = loss / sample_size / math.log(2)
-            logging_meters['valid_loss'].update(loss, sample_size)
-            logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
+        with torch.no_grad():
+            for i, sample in enumerate(itr):
+                if use_cuda:
+                    # wrap input tensors in cuda tensors
+                    sample = utils.make_variable(sample, cuda=cuda)
+                loss = generator(sample)
+                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
+                loss = loss.item() / sample_size / math.log(2)
+                logging_meters['valid_loss'].update(loss, sample_size)
+                logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
 
         # update learning rate
         lr_scheduler.step(logging_meters['valid_loss'].avg)

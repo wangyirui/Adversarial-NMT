@@ -33,6 +33,8 @@ def add_dataset_args(parser):
                        help='maximum number of sentences in a batch')
     parser.add_argument('--joint-batch-size', type=int, default=32, metavar='N',
                         help='batch size for joint training')
+    parser.add_argument('--prepare-dis-batch-size', type=int, default=128, metavar='N',
+                        help='batch size for preparing discriminator training')
 
     return parser
 

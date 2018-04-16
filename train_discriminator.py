@@ -1,16 +1,21 @@
 import logging
 import os
 import math
+import numpy as np
 from collections import OrderedDict
 
 import torch
 from torch import cuda
+import torch.nn.functional as F
+from torch.utils.data import DataLoader,Dataset
 
 import utils
 from meters import AverageMeter
-from discriminator import Discriminator
+# from discriminator import Discriminator
+from discriminator2 import Discriminator
 from generator import LSTMModel
-from batch_generator import BatchGenerator
+from disc_dataloader import DatasetProcessing, prepare_training_data
+from disc_dataloader import train_dataloader, eval_dataloader
 
 
 def train_d(args, dataset):
@@ -55,21 +60,22 @@ def train_d(args, dataset):
         discriminator.cpu()
         generator.cpu()
 
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.CrossEntropyLoss()
 
     optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()),
                                                         args.d_learning_rate, momentum=args.momentum, nesterov=True)
 
-    translator = BatchGenerator(
-        generator, beam_size=args.beam, stop_early=(not args.no_early_stop),
-        normalize_scores=(not args.unnormalized), len_penalty=args.lenpen,
-        unk_penalty=args.unkpen)
+    # optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-3)
 
     # Train until the accuracy achieve the define value
     max_epoch = args.max_epoch or math.inf
     epoch_i = 1
     trg_acc = 0.82
     best_dev_loss = math.inf
+
+    # validation set data loader (only prepare once)
+    valid = prepare_training_data(args, dataset, 'valid', generator, epoch_i, use_cuda)
+    data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
 
     # main training loop
     while epoch_i <= max_epoch:
@@ -78,22 +84,14 @@ def train_d(args, dataset):
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        # we must use a fixed max sentence length
-        max_positions_train = (args.fixed_max_len, args.fixed_max_len)
+        train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
+        data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
-        # Initialize dataloader, starting at batch_offset
-        itr = dataset.train_dataloader(
-            'train',
-            max_tokens=args.max_tokens,
-            max_sentences=args.joint_batch_size,
-            max_positions=max_positions_train,
-            seed=seed,
-            epoch=epoch_i,
-            sample_without_replacement=args.sample_without_replacement,
-            sort_by_source_size=(epoch_i <= args.curriculum),
-            shard_id=args.distributed_rank,
-            num_shards=args.distributed_world_size,
-        )
+        # discriminator training dataloader
+        train_loader = train_dataloader(data_train, batch_size=args.joint_batch_size, seed=seed, epoch=epoch_i,
+                         sample_without_replacement=0, sort_by_source_size=False)
+
+        valid_loader = eval_dataloader(data_valid, num_workers=4, batch_size=args.joint_batch_size)
 
         # set training mode
         discriminator.train()
@@ -103,99 +101,58 @@ def train_d(args, dataset):
             if val is not None:
                 val.reset()
 
-        # training process
-        for i, sample in enumerate(itr):
-            with torch.no_grad():
-                if use_cuda:
-                    # wrap input tensors in cuda tensors
-                    sample = utils.make_variable(sample, cuda=cuda)
-                    neg_tokens = translator.generate_translation_tokens(sample, beam_size=args.beam, maxlen_a=args.max_len_a,
-                                                                    maxlen_b=args.max_len_b, nbest=args.nbest, max_res=args.fixed_max_len)
-                neg_labels = sample['target'].new(neg_tokens.size(0), 1).fill_(0).float()
+        for i, sample in enumerate(train_loader):
+            if use_cuda:
+                # wrap input tensors in cuda tensors
+                sample = utils.make_variable(sample, cuda=use_cuda)
 
-                pos_tokens = sample['net_input']['src_tokens']
+            disc_out = discriminator(sample['src_tokens'], sample['trg_tokens'])
 
-                pos_labels = sample['target'].new(neg_tokens.size(0), 1).fill_(1).float()
+            loss = criterion(disc_out, sample['labels'])
+            _, prediction = F.softmax(disc_out, dim=1).topk(1)
+            acc = torch.sum(prediction == sample['labels'].unsqueeze(1)).float() / len(sample['labels'])
 
-                src_tokens = torch.cat([sample['net_input']['src_tokens']]*2, dim=0)
-                trg_tokens = torch.cat([pos_tokens, neg_tokens], dim=0)
-                labels = torch.cat([pos_labels, neg_labels], dim=0)
-                indices = torch.randperm(labels.size(0))
-                src_tokens = src_tokens[indices]
-                trg_tokens = trg_tokens[indices]
-                labels = labels[indices]
-
-            disc_out = discriminator(src_tokens, trg_tokens, dataset.dst_dict.pad())
-            loss = criterion(disc_out, labels)
-            # _, prediction = disc_out.topk(1)
-            prediction = torch.round(disc_out)
-            acc = torch.sum(prediction == labels).float() / len(labels)
-            logging_meters['train_acc'].update(acc)
-            logging_meters['train_loss'].update(loss)
-            logging.debug("D training loss {0:.3f}, acc {1:.3f}, avgAcc {2:.3f}, lr={3} at batch {4}: ".format(logging_meters['train_loss'].avg,
-                                                                                                                acc,
-                                                                                                               logging_meters['train_acc'].avg,
-                                                                                                               optimizer.param_groups[0]['lr'],
-                                                                                                               i,))
+            logging_meters['train_acc'].update(acc.item())
+            logging_meters['train_loss'].update(loss.item())
+            logging.debug("D training loss {0:.3f}, acc {1:.3f}, avgAcc {2:.3f}, lr={3} at batch {4}: ". \
+                          format(logging_meters['train_loss'].avg, acc, logging_meters['train_acc'].avg,
+                                 optimizer.param_groups[0]['lr'], i))
 
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm(discriminator.parameters(), args.clip_norm)
             optimizer.step()
 
-        max_positions_valid = (args.fixed_max_len, args.fixed_max_len)
-        # validation process
-        # Initialize dataloader
-        itr = dataset.eval_dataloader(
-            'valid',
-            max_tokens=args.max_tokens,
-            max_sentences=args.joint_batch_size,
-            max_positions=max_positions_valid,
-            skip_invalid_size_inputs_valid_test=True,
-            descending=True,  # largest batch first to warm the caching allocator
-            shard_id=args.distributed_rank,
-            num_shards=args.distributed_world_size,
-        )
+            # del src_tokens, trg_tokens, loss, disc_out, labels, prediction, acc
+            del disc_out, loss, prediction, acc
+
 
         # set validation mode
         discriminator.eval()
 
-        for i, sample in enumerate(itr):
+        for i, sample in enumerate(valid_loader):
             with torch.no_grad():
                 if use_cuda:
                     # wrap input tensors in cuda tensors
-                    sample = utils.make_variable(sample, cuda=cuda)
+                    sample = utils.make_variable(sample, cuda=use_cuda)
 
-                neg_tokens = translator.generate_translation_tokens(sample, beam_size=args.beam,
-                                                                    maxlen_a=args.max_len_a,
-                                                                    maxlen_b=args.max_len_b, nbest=args.nbest,
-                                                                    max_res=args.fixed_max_len)
-                neg_labels = sample['target'].new(neg_tokens.size(0), 1).fill_(0).float()
+                disc_out = discriminator(sample['src_tokens'], sample['trg_tokens'])
 
-                pos_tokens = sample['net_input']['src_tokens']
+                loss = criterion(disc_out, sample['labels'])
+                _, prediction = F.softmax(disc_out, dim=1).topk(1)
+                acc = torch.sum(prediction == sample['labels'].unsqueeze(1)).float() / len(sample['labels'])
 
-                pos_labels = sample['target'].new(neg_tokens.size(0), 1).fill_(1).float()
+                logging_meters['valid_acc'].update(acc.item())
+                logging_meters['valid_loss'].update(loss.item())
+                logging.debug("D eval loss {0:.3f}, acc {1:.3f}, avgAcc {2:.3f}, lr={3} at batch {4}: ". \
+                              format(logging_meters['valid_loss'].avg, acc, logging_meters['valid_acc'].avg,
+                                     optimizer.param_groups[0]['lr'], i))
 
-                src_tokens = torch.cat([sample['net_input']['src_tokens']] * 2, dim=0)
-                trg_tokens = torch.cat([pos_tokens, neg_tokens], dim=0)
-                labels = torch.cat([pos_labels, neg_labels], dim=0)
+            del disc_out, loss, prediction, acc
 
-                disc_out = discriminator(src_tokens, trg_tokens, dataset.dst_dict.pad())
-
-                loss = criterion(disc_out, labels)
-                # _, prediction = disc_out.topk(1)
-                prediction = torch.round(disc_out)
-                acc = torch.sum(prediction == labels).float() / len(labels)
-                logging_meters['valid_acc'].update(acc)
-                logging_meters['valid_loss'].update(loss)
-                logging.debug("D eval loss {0:.3f}, acc {1:.3f}, avgAcc {2:.3f}, lr={3} at batch {4}: ".format(logging_meters['valid_loss'].avg,
-                                                                                                                acc,
-                                                                                                                logging_meters['valid_acc'].avg,
-                                                                                                                optimizer.param_groups[0]['lr'],
-                                                                                                                i))
-
-        if logging_meters['valid_acc'].avg >= 0.7:
-            torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}.epoch_{1}.pt".format(logging_meters['valid_loss'].avg, epoch_i))
+        if logging_meters['valid_acc'].avg >= 0.75:
+            torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}.epoch_{1}.pt" \
+                       .format(logging_meters['valid_loss'].avg, epoch_i))
 
             if logging_meters['valid_loss'].avg < best_dev_loss:
                 best_dev_loss = logging_meters['valid_loss'].avg

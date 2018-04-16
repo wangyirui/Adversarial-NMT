@@ -15,8 +15,6 @@ class Discriminator(nn.Module):
 
         self.kernel_sizes = [i for i in range(1, args.fixed_max_len, 4)]
         self.num_filters = [100 + i * 10 for i in range(1, args.fixed_max_len, 4)]
-        # self.kernel_sizes = [1,5,10,15]
-        # self.num_filters = [100, 150, 200, 250]
 
         self.embed_src_tokens = Embedding(len(src_dict), args.encoder_embed_dim, src_dict.pad())
         self.embed_trg_tokens = Embedding(len(dst_dict), args.decoder_embed_dim, dst_dict.pad())
@@ -25,39 +23,38 @@ class Discriminator(nn.Module):
         self.highway = HighwayMLP(sum(self.num_filters), nn.functional.relu, nn.functional.sigmoid)
         self.dropout_in = nn.Dropout2d(p=0.2)
         self.dropout_out = nn.Dropout2d(p=0.5)
-        self.fc = Linear(2 * sum(self.num_filters), 1)
+        self.fc = Linear(2*sum(self.num_filters), 2)
+        # self.fc_out = Linear(20, 2)
+        self.logsoftmax = nn.LogSoftmax(dim=1)
 
-    def forward(self, src_sentence, trg_sentence, pad_idx):
-        padded_src_embed = self.embed_src_tokens(src_sentence)
-        padded_src_embed = self.dropout_in(padded_src_embed)
-        padded_src_embed = padded_src_embed.unsqueeze(1)
+    def forward(self, src_sentence, trg_sentence):
+        src_out = self.embed_src_tokens(src_sentence)
+        # src_out = self.dropout_in(src_out)
+        src_out = src_out.unsqueeze(1)
 
-        padded_trg_embed = self.embed_src_tokens(trg_sentence)
-        padded_trg_embed = self.dropout_in(padded_trg_embed)
-        padded_trg_embed = padded_trg_embed.unsqueeze(1)
+        trg_out = self.embed_src_tokens(trg_sentence)
+        # trg_out = self.dropout_in(trg_out)
+        trg_out = trg_out.unsqueeze(1)
 
-        batch_size = padded_src_embed.size(0)
-        src_conv_out = self.conv2d(padded_src_embed)
-        src_conv_out = src_conv_out.view(batch_size, -1)
-        trg_conv_out = self.conv2d(padded_trg_embed)
-        trg_conv_out = trg_conv_out.view(batch_size, -1)
+        batch_size = src_out.size(0)
+        src_out = self.conv2d(src_out)
+        src_out = src_out.view(batch_size, -1)
+        trg_out = self.conv2d(trg_out)
+        trg_out = trg_out.view(batch_size, -1)
 
-        src_highway_out = self.highway(src_conv_out)
-        src_highway_out = self.dropout_out(src_highway_out)
-        trg_highway_out = self.highway(trg_conv_out)
-        trg_highway_out = self.dropout_out(trg_highway_out)
+        src_out = self.highway(src_out)
+        # src_out = self.dropout_out(src_out)
+        trg_out = self.highway(trg_out)
+        # trg_out = self.dropout_out(trg_out)
 
-        concat_out = torch.cat([src_highway_out, trg_highway_out], dim=1)
-        scores = self.fc(concat_out)
-        scores = F.sigmoid(scores)
+        out = torch.cat([src_out, trg_out], dim=1)
+        out = self.fc(out)
+        # out = self.fc_out(out)
+        # # out = self.dropout_out(out)
+        # out = self.fc_out(out)
+        out = self.logsoftmax(out)
 
-        return scores
-
-    def pad_sentences(self, sentences, pad_idx, size=50):
-        res = sentences[0].new(len(sentences), size).fill_(pad_idx)
-        for i, v in enumerate(sentences):
-            res[i][:len(v)] = v
-        return res
+        return out
 
 
 class ConvlutionLayer(nn.Module):
@@ -116,18 +113,18 @@ def Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, **kwargs
     for name, param in m.named_parameters():
         if 'weight' in name:
             # param.data.uniform_(-0.1, 0.1)
-            nn.init.xavier_normal_(param.data)
+            nn.init.kaiming_uniform_(param.data)
         elif 'bias' in name:
-            param.data.uniform_(-0.1, 0.1)
+            nn.init.constant_(param.data, 0)
     return m
 
 
 def Linear(in_features, out_features, bias=True, dropout=0):
     """Weight-normalized Linear layer (input: N x T x C)"""
     m = nn.Linear(in_features, out_features, bias=bias)
-    nn.init.xavier_normal_(m.weight.data)
+    nn.init.kaiming_uniform_(m.weight.data)
     if bias:
-        m.bias.data.uniform_(-0.1, 0.1)
+        nn.init.constant_(m.bias.data, 0)
     return m
 
 
