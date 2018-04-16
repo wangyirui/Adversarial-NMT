@@ -85,7 +85,7 @@ def train_d(args, dataset):
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        if args.sample_without_replacement > 0:
+        if args.sample_without_replacement > 0 and epoch_i > 1:
             train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
         data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
