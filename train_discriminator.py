@@ -77,6 +77,7 @@ def train_d(args, dataset):
     valid = prepare_training_data(args, dataset, 'valid', generator, epoch_i, use_cuda)
     train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
     data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
+    data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
     # main training loop
     while epoch_i <= max_epoch:
@@ -87,7 +88,7 @@ def train_d(args, dataset):
 
         if args.sample_without_replacement > 0 and epoch_i > 1:
             train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
-        data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
+            data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
         # discriminator training dataloader
         train_loader = train_dataloader(data_train, batch_size=args.joint_batch_size,
