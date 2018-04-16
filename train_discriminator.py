@@ -75,6 +75,7 @@ def train_d(args, dataset):
 
     # validation set data loader (only prepare once)
     valid = prepare_training_data(args, dataset, 'valid', generator, epoch_i, use_cuda)
+    train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
     data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
 
     # main training loop
@@ -84,7 +85,8 @@ def train_d(args, dataset):
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
+        if args.sample_without_replacement > 0:
+            train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
         data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
         # discriminator training dataloader
