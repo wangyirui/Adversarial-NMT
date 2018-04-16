@@ -88,8 +88,8 @@ def train_d(args, dataset):
         data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
         # discriminator training dataloader
-        train_loader = train_dataloader(data_train, batch_size=args.joint_batch_size, seed=seed, epoch=epoch_i,
-                         sample_without_replacement=0, sort_by_source_size=False)
+        train_loader = train_dataloader(data_train, batch_size=args.joint_batch_size,
+                                        seed=seed, epoch=epoch_i, sort_by_source_size=False)
 
         valid_loader = eval_dataloader(data_valid, num_workers=4, batch_size=args.joint_batch_size)
 

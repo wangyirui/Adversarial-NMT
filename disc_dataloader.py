@@ -110,29 +110,15 @@ def batches_by_order(data_size, batch_size=32):
 def shuffled_batches_by_size(data_size, batch_size=32, epoch=1, sample=0, sort_by_source_size=False):
     """Returns batches of indices, bucketed by size and then shuffled. Batches
     may contain sequences of different lengths."""
-
-    indices = np.random.permutation(data_size)
+    if sample:
+        indices = np.random.choice(data_size, sample, replace=False)
+    else:
+        indices = np.random.permutation(data_size)
 
     batches = list(_make_batches(indices, batch_size))
 
     if not sort_by_source_size:
         np.random.shuffle(batches)
-
-    if sample:
-        offset = (epoch - 1) * sample
-        while offset > len(batches):
-            np.random.shuffle(batches)
-            offset -= len(batches)
-
-        result = batches[offset:(offset + sample)]
-        while len(result) < sample:
-            np.random.shuffle(batches)
-            result += batches[:(sample - len(result))]
-
-        assert len(result) == sample, \
-            "batch length is not correct {}".format(len(result))
-
-        batches = result
 
     return batches
 
