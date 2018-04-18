@@ -122,8 +122,12 @@ def main(args):
     return
 
     if use_cuda:
-        discriminator.cuda()
-        generator.cuda()
+        if torch.cuda.device_count() > 1:
+            discriminator = torch.nn.DataParallel(discriminator).cuda()
+            generator = torch.nn.DataParallel(generator).cuda()
+        else:
+            generator.cuda()
+            discriminator.cuda()
     else:
         discriminator.cpu()
         generator.cpu()

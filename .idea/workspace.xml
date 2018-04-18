@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b9e16786-9970-474f-8639-8bfc5104c8bf" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/discriminator.py" afterPath="$PROJECT_DIR$/discriminator.py" />
-      <change beforePath="$PROJECT_DIR$/train_discriminator.py" afterPath="$PROJECT_DIR$/train_discriminator.py" />
+      <change beforePath="$PROJECT_DIR$/joint_train.py" afterPath="$PROJECT_DIR$/joint_train.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -22,8 +20,8 @@
       <file leaf-file-name="joint_train.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/joint_train.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="6080">
-              <caret line="389" column="0" lean-forward="false" selection-start-line="389" selection-start-column="0" selection-end-line="389" selection-end-column="0" />
+            <state relative-caret-position="335">
+              <caret line="123" column="16" lean-forward="true" selection-start-line="123" selection-start-column="16" selection-end-line="123" selection-end-column="16" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -41,7 +39,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="discriminator.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="discriminator.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/discriminator.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="342">
@@ -51,11 +49,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="train_discriminator.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="train_discriminator.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/train_discriminator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-988">
-              <caret line="56" column="41" lean-forward="true" selection-start-line="56" selection-start-column="41" selection-end-line="56" selection-end-column="41" />
+            <state relative-caret-position="323">
+              <caret line="59" column="13" lean-forward="true" selection-start-line="59" selection-start-column="13" selection-end-line="59" selection-end-column="13" />
               <folding>
                 <element signature="e#0#14#0" expanded="true" />
               </folding>
@@ -172,7 +170,6 @@
         <option value="$PROJECT_DIR$/tokenizer.py" />
         <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/train_generator.py" />
-        <option value="$PROJECT_DIR$/joint_train.py" />
         <option value="$PROJECT_DIR$/discriminator_data.py" />
         <option value="$PROJECT_DIR$/batch_generator.py" />
         <option value="$PROJECT_DIR$/options.py" />
@@ -181,6 +178,7 @@
         <option value="$PROJECT_DIR$/disc_dataloader.py" />
         <option value="$PROJECT_DIR$/train_discriminator.py" />
         <option value="$PROJECT_DIR$/discriminator.py" />
+        <option value="$PROJECT_DIR$/joint_train.py" />
       </list>
     </option>
   </component>
@@ -358,7 +356,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/joint_train.py</url>
-          <line>279</line>
+          <line>283</line>
           <option name="timeStamp" value="58" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -697,16 +695,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/joint_train.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="6080">
-          <caret line="389" column="0" lean-forward="false" selection-start-line="389" selection-start-column="0" selection-end-line="389" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#15#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/options.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="221">
@@ -751,21 +739,31 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/train_discriminator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-988">
-          <caret line="56" column="41" lean-forward="true" selection-start-line="56" selection-start-column="41" selection-end-line="56" selection-end-column="41" />
-          <folding>
-            <element signature="e#0#14#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/discriminator.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="342">
           <caret line="40" column="46" lean-forward="true" selection-start-line="40" selection-start-column="46" selection-end-line="40" selection-end-column="46" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/joint_train.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="335">
+          <caret line="123" column="16" lean-forward="true" selection-start-line="123" selection-start-column="16" selection-end-line="123" selection-end-column="16" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/train_discriminator.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="323">
+          <caret line="59" column="13" lean-forward="true" selection-start-line="59" selection-start-column="13" selection-end-line="59" selection-end-column="13" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
