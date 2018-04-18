@@ -74,7 +74,7 @@ def train_d(args, dataset):
     # Train until the accuracy achieve the define value
     max_epoch = args.max_epoch or math.inf
     epoch_i = 1
-    trg_acc = 0.82
+    trg_acc = 0.80
     best_dev_loss = math.inf
 
     # validation set data loader (only prepare once)
