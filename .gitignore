@@ -2,3 +2,4 @@ checkpoints/*
 data/*
 data-bin/*
 *.pyc
+idea/workspace.xml
