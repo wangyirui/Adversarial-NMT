@@ -44,9 +44,9 @@ class Discriminator(nn.Module):
         trg_out = trg_out.view(batch_size, -1)
 
         src_out = self.highway(src_out)
-        src_out = self.dropout(src_out)
+        src_out = self.dropout_out(src_out)
         trg_out = self.highway(trg_out)
-        trg_out = self.dropout(trg_out)
+        trg_out = self.dropout_out(trg_out)
 
         out = torch.cat([src_out, trg_out], dim=1)
         out = self.fc(out)
