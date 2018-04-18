@@ -183,59 +183,61 @@ def prepare_training_data(args, dataset, split, generator, epoch_i, use_cuda):
     trg_data_temp = []
     labels_temp = []
     print("preparing discriminator {0} data...".format(split))
-    for i, sample in enumerate(itr):
-        sys.stdout.write('\r' + 'Finishing ' + str(i + 1) + '/' + str(len(itr)))
-        sys.stdout.flush()
 
-        if use_cuda:
-            # wrap input tensors in cuda tensors
-            sample = utils.make_variable(sample, cuda=cuda)
+    with torch.no_grad():
+        for i, sample in enumerate(itr):
+            sys.stdout.write('\r' + 'Finishing ' + str(i + 1) + '/' + str(len(itr)))
+            sys.stdout.flush()
 
-        # a tensor with max possible translation length
-        neg_tokens = translator.generate_translation_tokens(args, dataset, sample, beam_size=args.beam, maxlen_a=args.max_len_a,
-                                                            maxlen_b=args.max_len_b, nbest=args.nbest)
+            if use_cuda:
+                # wrap input tensors in cuda tensors
+                sample = utils.make_variable(sample, cuda=cuda)
 
-        # mask the results that exceeds fixed max length, and truncate at the max length
-        selected_row = (neg_tokens[:, args.fixed_max_len + 1] == dataset.dst_dict.pad()).nonzero().squeeze(1)
+            # a tensor with max possible translation length
+            neg_tokens = translator.generate_translation_tokens(args, dataset, sample, beam_size=args.beam, maxlen_a=args.max_len_a,
+                                                                maxlen_b=args.max_len_b, nbest=args.nbest)
 
-        if selected_row.size(0) != neg_tokens.size(0):
-            print('\r' + "Warning, {0} sentences are removed due to exceeding length".format(int(neg_tokens.size(0) - selected_row.size(0))))
+            # mask the results that exceeds fixed max length, and truncate at the max length
+            selected_row = (neg_tokens[:, args.fixed_max_len + 1] == dataset.dst_dict.pad()).nonzero().squeeze(1)
 
-        neg_tokens = neg_tokens[selected_row]
-        neg_tokens = neg_tokens[:, : args.fixed_max_len]
+            if selected_row.size(0) != neg_tokens.size(0):
+                print('\r' + "Warning, {0} sentences are removed due to exceeding length".format(int(neg_tokens.size(0) - selected_row.size(0))))
 
-        pos_tokens = sample['target'][selected_row]
+            neg_tokens = neg_tokens[selected_row]
+            neg_tokens = neg_tokens[:, : args.fixed_max_len]
 
-        src_tokens = sample['net_input']['src_tokens'][selected_row]
+            pos_tokens = sample['target'][selected_row]
 
-        assert neg_tokens.size() == pos_tokens.size()
-        assert src_tokens.size(0) == pos_tokens.size(0)
+            src_tokens = sample['net_input']['src_tokens'][selected_row]
 
-        src_data_temp.append(src_tokens)
-        trg_data_temp.append(pos_tokens)
-        labels_temp.extend([1] * int(pos_tokens.size(0)))
+            assert neg_tokens.size() == pos_tokens.size()
+            assert src_tokens.size(0) == pos_tokens.size(0)
 
-        src_data_temp.append(src_tokens)
-        trg_data_temp.append(neg_tokens)
-        labels_temp.extend([0] * int(neg_tokens.size(0)))
+            src_data_temp.append(src_tokens)
+            trg_data_temp.append(pos_tokens)
+            labels_temp.extend([1] * int(pos_tokens.size(0)))
 
-    src_data_temp = torch.cat(src_data_temp, dim=0)
-    trg_data_temp = torch.cat(trg_data_temp, dim=0)
-    src_data_temp = src_data_temp.cpu().int()
-    trg_data_temp = trg_data_temp.cpu().int()
+            src_data_temp.append(src_tokens)
+            trg_data_temp.append(neg_tokens)
+            labels_temp.extend([0] * int(neg_tokens.size(0)))
 
-    labels_temp = np.asarray(labels_temp)
-    labels = torch.from_numpy(labels_temp)
-    labels = labels.cpu().int()
+        src_data_temp = torch.cat(src_data_temp, dim=0)
+        trg_data_temp = torch.cat(trg_data_temp, dim=0)
+        src_data_temp = src_data_temp.cpu().int()
+        trg_data_temp = trg_data_temp.cpu().int()
 
-    # shuffle
-    indices = np.random.permutation(len(src_data_temp))
-    src_data_temp = src_data_temp[indices]
-    trg_data_temp = trg_data_temp[indices]
-    labels = labels[indices]
+        labels_temp = np.asarray(labels_temp)
+        labels = torch.from_numpy(labels_temp)
+        labels = labels.cpu().int()
 
-    data = {'src': src_data_temp, 'trg': trg_data_temp, 'labels': labels}
+        # shuffle
+        indices = np.random.permutation(len(src_data_temp))
+        src_data_temp = src_data_temp[indices]
+        trg_data_temp = trg_data_temp[indices]
+        labels = labels[indices]
 
-    print('\n' + "preparing discriminator {0} data done!".format(split))
+        data = {'src': src_data_temp, 'trg': trg_data_temp, 'labels': labels}
+
+        print('\n' + "preparing discriminator {0} data done!".format(split))
 
     return data

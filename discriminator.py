@@ -21,19 +21,15 @@ class Discriminator(nn.Module):
 
         self.conv2d = ConvlutionLayer(args, self.kernel_sizes, self.num_filters)
         self.highway = HighwayMLP(sum(self.num_filters), nn.functional.relu, nn.functional.sigmoid)
-        self.dropout_in = nn.Dropout2d(p=0.2)
-        self.dropout_out = nn.Dropout2d(p=0.5)
+
         self.fc = Linear(2*sum(self.num_filters), 2)
-        # self.fc_out = Linear(20, 2)
-        self.logsoftmax = nn.LogSoftmax(dim=1)
+
 
     def forward(self, src_sentence, trg_sentence):
         src_out = self.embed_src_tokens(src_sentence)
-        # src_out = self.dropout_in(src_out)
         src_out = src_out.unsqueeze(1)
 
         trg_out = self.embed_src_tokens(trg_sentence)
-        # trg_out = self.dropout_in(trg_out)
         trg_out = trg_out.unsqueeze(1)
 
         batch_size = src_out.size(0)
@@ -43,16 +39,10 @@ class Discriminator(nn.Module):
         trg_out = trg_out.view(batch_size, -1)
 
         src_out = self.highway(src_out)
-        # src_out = self.dropout_out(src_out)
         trg_out = self.highway(trg_out)
-        # trg_out = self.dropout_out(trg_out)
 
         out = torch.cat([src_out, trg_out], dim=1)
         out = self.fc(out)
-        # out = self.fc_out(out)
-        # # out = self.dropout_out(out)
-        # out = self.fc_out(out)
-        out = self.logsoftmax(out)
 
         return out
 

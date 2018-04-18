@@ -25,7 +25,7 @@ class Discriminator(nn.Module):
                    stride=1,
                    padding=1),
             nn.BatchNorm2d(512),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
@@ -36,17 +36,17 @@ class Discriminator(nn.Module):
                    stride=1,
                    padding=1),
             nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         self.classifier = nn.Sequential(
             nn.Dropout(),
             Linear(256 * 12 * 12, 20),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Dropout(),
             Linear(20, 20),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             Linear(20, 2),
         )
 

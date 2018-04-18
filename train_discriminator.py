@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader,Dataset
 
 import utils
 from meters import AverageMeter
-# from discriminator import Discriminator
-from discriminator2 import Discriminator
+from discriminator import Discriminator
+# from discriminator2 import Discriminator
 from generator import LSTMModel
 from disc_dataloader import DatasetProcessing, prepare_training_data
 from disc_dataloader import train_dataloader, eval_dataloader
@@ -62,10 +62,10 @@ def train_d(args, dataset):
 
     criterion = torch.nn.CrossEntropyLoss()
 
-    optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()),
-                                                        args.d_learning_rate, momentum=args.momentum, nesterov=True)
+    # optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()),
+    #                                                     args.d_learning_rate, momentum=args.momentum, nesterov=True)
 
-    # optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-3)
+    optimizer = torch.optim.RMSprop(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-4)
 
     # Train until the accuracy achieve the define value
     max_epoch = args.max_epoch or math.inf
@@ -74,10 +74,10 @@ def train_d(args, dataset):
     best_dev_loss = math.inf
 
     # validation set data loader (only prepare once)
-    valid = prepare_training_data(args, dataset, 'valid', generator, epoch_i, use_cuda)
     train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
-    data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
+    valid = prepare_training_data(args, dataset, 'valid', generator, epoch_i, use_cuda)
     data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
+    data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
 
     # main training loop
     while epoch_i <= max_epoch:
@@ -88,6 +88,13 @@ def train_d(args, dataset):
 
         if args.sample_without_replacement > 0 and epoch_i > 1:
             train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
+            data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
+        elif epoch_i > 1:
+            # shuffle
+            indices = np.random.permutation(len(train['src']))
+            train['src'] = train['src'][indices]
+            train['trg'] = train['trg'][indices]
+            train['labels'] = train['labels'][indices]
             data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
 
         # discriminator training dataloader
