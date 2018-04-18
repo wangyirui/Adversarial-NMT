@@ -54,8 +54,12 @@ def train_d(args, dataset):
     generator.load_state_dict(model_dict)
 
     if use_cuda:
-        generator.cuda()
-        discriminator.cuda()
+        if torch.cuda.device_count() > 1:
+            discriminator = torch.nn.DataParallel(discriminator).cuda()
+            generator = torch.nn.DataParallel(generator).cuda()
+        else:
+            generator.cuda()
+            discriminator.cuda()
     else:
         discriminator.cpu()
         generator.cpu()
