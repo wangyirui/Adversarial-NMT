@@ -13,8 +13,8 @@ class Discriminator(nn.Module):
         self.fixed_max_len = args.fixed_max_len
         self.use_cuda = use_cuda
 
-        self.kernel_sizes = [i for i in range(1, args.fixed_max_len, 4)]
-        self.num_filters = [100 + i * 10 for i in range(1, args.fixed_max_len, 4)]
+        self.kernel_sizes = [i for i in range(1, args.fixed_max_len, 5)]
+        self.num_filters = [50 + i * 10 for i in range(1, args.fixed_max_len, 5)]
 
         self.embed_src_tokens = Embedding(len(src_dict), args.encoder_embed_dim, src_dict.pad())
         self.embed_trg_tokens = Embedding(len(dst_dict), args.decoder_embed_dim, dst_dict.pad())
@@ -22,16 +22,19 @@ class Discriminator(nn.Module):
         self.conv2d = ConvlutionLayer(args, self.kernel_sizes, self.num_filters)
         self.highway = HighwayMLP(sum(self.num_filters), nn.functional.relu, nn.functional.sigmoid)
 
-        self.dropout = nn.Dropout()
+        self.dropout_in = nn.Dropout(p=0.2)
+        self.dropout_out = nn.Dropout()
 
         self.fc = Linear(2*sum(self.num_filters), 2)
 
 
     def forward(self, src_sentence, trg_sentence):
         src_out = self.embed_src_tokens(src_sentence)
+        src_out = self.dropout_in(src_out)
         src_out = src_out.unsqueeze(1)
 
         trg_out = self.embed_src_tokens(trg_sentence)
+        trg_out = self.dropout_in(trg_out)
         trg_out = trg_out.unsqueeze(1)
 
         batch_size = src_out.size(0)
