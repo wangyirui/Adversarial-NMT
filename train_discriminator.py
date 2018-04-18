@@ -56,7 +56,8 @@ def train_d(args, dataset):
     if use_cuda:
         if torch.cuda.device_count() > 1:
             discriminator = torch.nn.DataParallel(discriminator).cuda()
-            generator = torch.nn.DataParallel(generator).cuda()
+            # generator = torch.nn.DataParallel(generator).cuda()
+            generator.cuda()
         else:
             generator.cuda()
             discriminator.cuda()
