@@ -72,11 +72,14 @@ def train_d(args, dataset):
 
     optimizer = torch.optim.RMSprop(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-4)
 
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, factor=args.lr_shrink)
+
     # Train until the accuracy achieve the define value
     max_epoch = args.max_epoch or math.inf
     epoch_i = 1
     trg_acc = 0.82
     best_dev_loss = math.inf
+    lr = optimizer.param_groups[0]['lr']
 
     # validation set data loader (only prepare once)
     train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
@@ -85,22 +88,17 @@ def train_d(args, dataset):
     data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
 
     # main training loop
-    while epoch_i <= max_epoch:
+    while lr > args.min_d_lr and epoch_i <= max_epoch:
         logging.info("At {0}-th epoch.".format(epoch_i))
 
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
+
         if args.sample_without_replacement > 0 and epoch_i > 1:
             train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
             data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
-        elif epoch_i > 1:
-            # shuffle
-            indices = np.random.permutation(len(train['src']))
-            train['src'] = train['src'][indices]
-            train['trg'] = train['trg'][indices]
-            train['labels'] = train['labels'][indices]
-            data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
+
 
         # discriminator training dataloader
         train_loader = train_dataloader(data_train, batch_size=args.joint_batch_size,
@@ -165,9 +163,11 @@ def train_d(args, dataset):
 
             del disc_out, loss, prediction, acc
 
-        if logging_meters['valid_acc'].avg >= 0.75:
-            torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}.epoch_{1}.pt" \
-                       .format(logging_meters['valid_loss'].avg, epoch_i))
+        lr_scheduler.step(logging_meters['valid_loss'].avg)
+
+        if logging_meters['valid_acc'].avg >= 0.70:
+            torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}_acc_{1:.3f}.epoch_{2}.pt" \
+                       .format(logging_meters['valid_loss'].avg, logging_meters['valid_acc'].avg, epoch_i))
 
             if logging_meters['valid_loss'].avg < best_dev_loss:
                 best_dev_loss = logging_meters['valid_loss'].avg

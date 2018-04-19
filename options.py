@@ -70,6 +70,8 @@ def add_optimization_args(parser):
                         help='learning rate shrink factor, lr_new = (lr * lr_shrink)')
     parser.add_argument('--min-g-lr', default=1e-5, type=float, metavar='LR',
                         help='minimum learning rate')
+    parser.add_argument('--min-d-lr', default=1e-6, type=float, metavar='LR',
+                        help='minimum learning rate')
     parser.add_argument("--momentum", default=0.9, type=float,
                         help="Momentum when performing SGD. (default=0.9)")
     parser.add_argument("--use_estop", default=False, type=bool,

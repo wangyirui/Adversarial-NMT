@@ -198,7 +198,7 @@ def prepare_training_data(args, dataset, split, generator, epoch_i, use_cuda):
                                                                 maxlen_b=args.max_len_b, nbest=args.nbest)
 
             # mask the results that exceeds fixed max length, and truncate at the max length
-            selected_row = (neg_tokens[:, args.fixed_max_len + 1] == dataset.dst_dict.pad()).nonzero().squeeze(1)
+            selected_row = (neg_tokens[:, args.fixed_max_len] == dataset.dst_dict.pad()).nonzero().squeeze(1)
 
             if selected_row.size(0) != neg_tokens.size(0):
                 print('\r' + "Warning, {0} sentences are removed due to exceeding length".format(int(neg_tokens.size(0) - selected_row.size(0))))
@@ -211,7 +211,7 @@ def prepare_training_data(args, dataset, split, generator, epoch_i, use_cuda):
             src_tokens = sample['net_input']['src_tokens'][selected_row]
 
             assert neg_tokens.size() == pos_tokens.size()
-            assert src_tokens.size(0) == pos_tokens.size(0)
+            assert src_tokens.size() == pos_tokens.size()
 
             src_data_temp.append(src_tokens)
             trg_data_temp.append(pos_tokens)
@@ -229,12 +229,6 @@ def prepare_training_data(args, dataset, split, generator, epoch_i, use_cuda):
         labels_temp = np.asarray(labels_temp)
         labels = torch.from_numpy(labels_temp)
         labels = labels.cpu().int()
-
-        # shuffle
-        indices = np.random.permutation(len(src_data_temp))
-        src_data_temp = src_data_temp[indices]
-        trg_data_temp = trg_data_temp[indices]
-        labels = labels[indices]
 
         data = {'src': src_data_temp, 'trg': trg_data_temp, 'labels': labels}
 

@@ -22,7 +22,6 @@ class Discriminator(nn.Module):
         self.conv2d = ConvlutionLayer(args, self.kernel_sizes, self.num_filters)
         self.highway = HighwayMLP(sum(self.num_filters), nn.functional.relu, nn.functional.sigmoid)
 
-        self.dropout = nn.Dropout()
 
         self.fc = Linear(2*sum(self.num_filters), 2)
 
@@ -41,9 +40,7 @@ class Discriminator(nn.Module):
         trg_out = trg_out.view(batch_size, -1)
 
         src_out = self.highway(src_out)
-        src_out =self.dropout(src_out)
         trg_out = self.highway(trg_out)
-        trg_out = self.dropout(trg_out)
 
         out = torch.cat([src_out, trg_out], dim=1)
         out = self.fc(out)

@@ -251,6 +251,8 @@ class LanguagePairDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def collate_tokens(values, pad_idx, eos_idx, left_pad, move_eos_to_beginning=False, maxlen=None):
+        if maxlen is not None:
+            assert max(v.size(0) for v in values) <= maxlen
         size = max(v.size(0) for v in values) if maxlen is None else maxlen
         res = values[0].new(len(values), size).fill_(pad_idx)
 
