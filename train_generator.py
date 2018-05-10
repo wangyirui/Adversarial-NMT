@@ -35,7 +35,7 @@ def train_g(args, dataset):
     generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
 
     if use_cuda:
-        if len(args.gpuid) > 1:
+        if torch.cuda.device_count() > 1:
             generator = torch.nn.DataParallel(generator).cuda()
         else:
             generator.cuda()
@@ -59,10 +59,7 @@ def train_g(args, dataset):
         seed = args.seed + epoch_i
         torch.manual_seed(seed)
 
-        max_positions_train = (
-            min(args.max_source_positions, generator.encoder.max_positions()),
-            min(args.max_target_positions, generator.decoder.max_positions())
-        )
+        max_positions_train = (args.fixed_max_len, args.fixed_max_len)
 
         # Initialize dataloader, starting at batch_offset
         itr = dataset.train_dataloader(
@@ -111,14 +108,13 @@ def train_g(args, dataset):
                 if p.requires_grad:
                     p.grad.data.div_(sample_size)
 
-            torch.nn.utils.clip_grad_norm(generator.parameters(), args.clip_norm)
+            torch.nn.utils.clip_grad_norm_(generator.parameters(), args.clip_norm)
             optimizer.step()
 
+            del sys_out_batch, loss
+
         # validation -- this is a crude estimation because there might be some padding at the end
-        max_positions_valid = (
-            generator.encoder.max_positions(),
-            generator.decoder.max_positions(),
-        )
+        max_positions_valid = (args.fixed_max_len, args.fixed_max_len)
 
         # Initialize dataloader
         itr = dataset.eval_dataloader(
@@ -151,7 +147,9 @@ def train_g(args, dataset):
                 logging_meters['valid_loss'].update(loss, sample_size)
                 logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
 
-        # update learning rate
+                del sys_out_batch, loss
+
+                # update learning rate
         lr_scheduler.step(logging_meters['valid_loss'].avg)
         lr = optimizer.param_groups[0]['lr']
 

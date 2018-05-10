@@ -2,13 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b9e16786-9970-474f-8639-8bfc5104c8bf" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/PGLoss.py" afterPath="$PROJECT_DIR$/PGLoss.py" />
-      <change beforePath="$PROJECT_DIR$/disc_dataloader.py" afterPath="$PROJECT_DIR$/disc_dataloader.py" />
-      <change beforePath="$PROJECT_DIR$/generator.py" afterPath="$PROJECT_DIR$/generator.py" />
       <change beforePath="$PROJECT_DIR$/joint_train.py" afterPath="$PROJECT_DIR$/joint_train.py" />
-      <change beforePath="$PROJECT_DIR$/options.py" afterPath="$PROJECT_DIR$/options.py" />
-      <change beforePath="$PROJECT_DIR$/train_discriminator.py" afterPath="$PROJECT_DIR$/train_discriminator.py" />
       <change beforePath="$PROJECT_DIR$/train_generator.py" afterPath="$PROJECT_DIR$/train_generator.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -27,8 +21,8 @@
       <file leaf-file-name="joint_train.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/joint_train.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="418">
-              <caret line="199" column="41" lean-forward="true" selection-start-line="199" selection-start-column="41" selection-end-line="199" selection-end-column="41" />
+            <state relative-caret-position="190">
+              <caret line="170" column="69" lean-forward="false" selection-start-line="170" selection-start-column="31" selection-end-line="170" selection-end-column="69" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -36,11 +30,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="PGLoss.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="PGLoss.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/PGLoss.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="639">
-              <caret line="40" column="0" lean-forward="false" selection-start-line="40" selection-start-column="0" selection-end-line="40" selection-end-column="0" />
+            <state relative-caret-position="31">
+              <caret line="8" column="30" lean-forward="false" selection-start-line="8" selection-start-column="30" selection-end-line="8" selection-end-column="30" />
               <folding />
             </state>
           </provider>
@@ -58,11 +52,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="train_generator.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="train_generator.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/train_generator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="323">
-              <caret line="132" column="9" lean-forward="false" selection-start-line="123" selection-start-column="8" selection-end-line="132" selection-end-column="9" />
+            <state relative-caret-position="228">
+              <caret line="39" column="13" lean-forward="true" selection-start-line="39" selection-start-column="13" selection-end-line="39" selection-end-column="13" />
               <folding>
                 <element signature="e#0#14#0" expanded="true" />
               </folding>
@@ -73,8 +67,8 @@
       <file leaf-file-name="train_discriminator.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/train_discriminator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="342">
-              <caret line="126" column="57" lean-forward="false" selection-start-line="126" selection-start-column="50" selection-end-line="126" selection-end-column="57" />
+            <state relative-caret-position="266">
+              <caret line="56" column="41" lean-forward="true" selection-start-line="56" selection-start-column="11" selection-end-line="56" selection-end-column="41" />
               <folding>
                 <element signature="e#0#14#0" expanded="true" />
               </folding>
@@ -95,8 +89,8 @@
       <file leaf-file-name="options.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/options.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="373">
-              <caret line="92" column="55" lean-forward="false" selection-start-line="92" selection-start-column="25" selection-end-line="92" selection-end-column="55" />
+            <state relative-caret-position="278">
+              <caret line="30" column="64" lean-forward="false" selection-start-line="30" selection-start-column="59" selection-end-line="30" selection-end-column="64" />
               <folding />
             </state>
           </provider>
@@ -137,7 +131,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>shuffle</find>
       <find>[:</find>
       <find>eval</find>
       <find>Tokenizer</find>
@@ -161,12 +154,13 @@
       <find>best_dev_loss</find>
       <find>sample_without_replacement</find>
       <find>lea</find>
-      <find>batch</find>
       <find>beam</find>
       <find>new</find>
       <find>valid</find>
       <find>sample</find>
+      <find>batch</find>
       <find>clip</find>
+      <find>fixe</find>
     </findStrings>
     <replaceStrings>
       <replace>fixed_max_len</replace>
@@ -197,9 +191,9 @@
         <option value="$PROJECT_DIR$/options.py" />
         <option value="$PROJECT_DIR$/disc_dataloader.py" />
         <option value="$PROJECT_DIR$/generator.py" />
-        <option value="$PROJECT_DIR$/train_generator.py" />
         <option value="$PROJECT_DIR$/PGLoss.py" />
         <option value="$PROJECT_DIR$/joint_train.py" />
+        <option value="$PROJECT_DIR$/train_generator.py" />
       </list>
     </option>
   </component>
@@ -372,7 +366,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/train_generator.py</url>
-          <line>98</line>
+          <line>95</line>
           <option name="timeStamp" value="125" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -722,24 +716,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/train_generator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
-          <caret line="132" column="9" lean-forward="false" selection-start-line="123" selection-start-column="8" selection-end-line="132" selection-end-column="9" />
-          <folding>
-            <element signature="e#0#14#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/options.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="373">
-          <caret line="92" column="55" lean-forward="false" selection-start-line="92" selection-start-column="25" selection-end-line="92" selection-end-column="55" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/disc_dataloader.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="646">
@@ -760,31 +736,49 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/train_discriminator.py">
+    <entry file="file://$PROJECT_DIR$/PGLoss.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="342">
-          <caret line="126" column="57" lean-forward="false" selection-start-line="126" selection-start-column="50" selection-end-line="126" selection-end-column="57" />
-          <folding>
-            <element signature="e#0#14#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="31">
+          <caret line="8" column="30" lean-forward="false" selection-start-line="8" selection-start-column="30" selection-end-line="8" selection-end-column="30" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/options.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="278">
+          <caret line="30" column="64" lean-forward="false" selection-start-line="30" selection-start-column="59" selection-end-line="30" selection-end-column="64" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/joint_train.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="418">
-          <caret line="199" column="41" lean-forward="true" selection-start-line="199" selection-start-column="41" selection-end-line="199" selection-end-column="41" />
+        <state relative-caret-position="190">
+          <caret line="170" column="69" lean-forward="false" selection-start-line="170" selection-start-column="31" selection-end-line="170" selection-end-column="69" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/PGLoss.py">
+    <entry file="file://$PROJECT_DIR$/train_discriminator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="639">
-          <caret line="40" column="0" lean-forward="false" selection-start-line="40" selection-start-column="0" selection-end-line="40" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="266">
+          <caret line="56" column="41" lean-forward="true" selection-start-line="56" selection-start-column="11" selection-end-line="56" selection-end-column="41" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/train_generator.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="228">
+          <caret line="39" column="13" lean-forward="true" selection-start-line="39" selection-start-column="13" selection-end-line="39" selection-end-column="13" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
