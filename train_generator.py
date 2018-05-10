@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 import torch
 from torch import cuda
+import torch.nn.functional as F
 
 import utils
 from meters import AverageMeter
@@ -90,7 +91,9 @@ def train_g(args, dataset):
                 # wrap input tensors in cuda tensors
                 sample = utils.make_variable(sample, cuda=cuda)
 
-            loss = generator(sample)
+            train_trg_batch = sample['target'].view(-1)
+            sys_out_batch = generator(sample)
+            loss = F.nll_loss(sys_out_batch, train_trg_batch, size_average=False, ignore_index=dataset.dst_dict.pad(), reduce=True)
             sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
             nsentences = sample['target'].size(0)
             logging_loss = loss.item() / sample_size / math.log(2)
@@ -140,7 +143,9 @@ def train_g(args, dataset):
                 if use_cuda:
                     # wrap input tensors in cuda tensors
                     sample = utils.make_variable(sample, cuda=cuda)
-                loss = generator(sample)
+                val_trg_batch = sample['target'].view(-1)
+                sys_out_batch = generator(sample)
+                loss = F.nll_loss(sys_out_batch, val_trg_batch, size_average=False, ignore_index=dataset.dst_dict.pad(), reduce=True)
                 sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
                 loss = loss.item() / sample_size / math.log(2)
                 logging_meters['valid_loss'].update(loss, sample_size)

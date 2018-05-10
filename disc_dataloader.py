@@ -160,7 +160,7 @@ def prepare_training_data(args, dataset, split, generator, epoch_i, use_cuda):
             max_positions=max_positions_train,
             seed=seed,
             epoch=epoch_i,
-            sample_without_replacement=args.sample_without_replacement,
+            sample_without_replacement=args.d_sample_without_replacement,
             sort_by_source_size=(epoch_i <= args.curriculum),
             shard_id=args.distributed_rank,
             num_shards=args.distributed_world_size,

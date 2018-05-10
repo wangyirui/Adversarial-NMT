@@ -2,11 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b9e16786-9970-474f-8639-8bfc5104c8bf" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/data.py" afterPath="$PROJECT_DIR$/data.py" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change beforePath="$PROJECT_DIR$/PGLoss.py" afterPath="$PROJECT_DIR$/PGLoss.py" />
       <change beforePath="$PROJECT_DIR$/disc_dataloader.py" afterPath="$PROJECT_DIR$/disc_dataloader.py" />
-      <change beforePath="$PROJECT_DIR$/discriminator.py" afterPath="$PROJECT_DIR$/discriminator.py" />
+      <change beforePath="$PROJECT_DIR$/generator.py" afterPath="$PROJECT_DIR$/generator.py" />
+      <change beforePath="$PROJECT_DIR$/joint_train.py" afterPath="$PROJECT_DIR$/joint_train.py" />
       <change beforePath="$PROJECT_DIR$/options.py" afterPath="$PROJECT_DIR$/options.py" />
       <change beforePath="$PROJECT_DIR$/train_discriminator.py" afterPath="$PROJECT_DIR$/train_discriminator.py" />
+      <change beforePath="$PROJECT_DIR$/train_generator.py" afterPath="$PROJECT_DIR$/train_generator.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -16,16 +19,16 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/Adversarial_NMT$generate.coverage" NAME="generate Coverage Results" MODIFIED="1522243814601" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Adversarial_NMT$joint_train.coverage" NAME="joint_train Coverage Results" MODIFIED="1524102120231" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Adversarial_NMT$generate.coverage" NAME="generate Coverage Results" MODIFIED="1525919327653" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Adversarial_NMT$joint_train.coverage" NAME="joint_train Coverage Results" MODIFIED="1525920222522" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file leaf-file-name="joint_train.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/joint_train.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1767">
-              <caret line="122" column="0" lean-forward="false" selection-start-line="122" selection-start-column="0" selection-end-line="122" selection-end-column="0" />
+            <state relative-caret-position="418">
+              <caret line="199" column="41" lean-forward="true" selection-start-line="199" selection-start-column="41" selection-end-line="199" selection-end-column="41" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -33,31 +36,33 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="discriminator2.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/discriminator2.py">
+      <file leaf-file-name="PGLoss.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/PGLoss.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="399">
-              <caret line="23" column="33" lean-forward="false" selection-start-line="23" selection-start-column="33" selection-end-line="23" selection-end-column="33" />
+            <state relative-caret-position="639">
+              <caret line="40" column="0" lean-forward="false" selection-start-line="40" selection-start-column="0" selection-end-line="40" selection-end-column="0" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="discriminator.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/discriminator.py">
+      <file leaf-file-name="generator.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/generator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="456">
-              <caret line="41" column="39" lean-forward="false" selection-start-line="41" selection-start-column="39" selection-end-line="41" selection-end-column="39" />
-              <folding />
+            <state relative-caret-position="1330">
+              <caret line="97" column="74" lean-forward="false" selection-start-line="97" selection-start-column="13" selection-end-line="97" selection-end-column="74" />
+              <folding>
+                <element signature="e#0#12#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="train_discriminator.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/train_discriminator.py">
+      <file leaf-file-name="train_generator.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/train_generator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="468">
-              <caret line="167" column="51" lean-forward="true" selection-start-line="167" selection-start-column="51" selection-end-line="167" selection-end-column="51" />
+            <state relative-caret-position="323">
+              <caret line="132" column="9" lean-forward="false" selection-start-line="123" selection-start-column="8" selection-end-line="132" selection-end-column="9" />
               <folding>
                 <element signature="e#0#14#0" expanded="true" />
               </folding>
@@ -65,11 +70,33 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="batch_generator.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/batch_generator.py">
+      <file leaf-file-name="train_discriminator.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/train_discriminator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-4453">
-              <caret line="82" column="0" lean-forward="false" selection-start-line="82" selection-start-column="0" selection-end-line="82" selection-end-column="0" />
+            <state relative-caret-position="342">
+              <caret line="126" column="57" lean-forward="false" selection-start-line="126" selection-start-column="50" selection-end-line="126" selection-end-column="57" />
+              <folding>
+                <element signature="e#0#14#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="discriminator.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/discriminator.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="399">
+              <caret line="41" column="39" lean-forward="false" selection-start-line="41" selection-start-column="39" selection-end-line="41" selection-end-column="39" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="options.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/options.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="373">
+              <caret line="92" column="55" lean-forward="false" selection-start-line="92" selection-start-column="25" selection-end-line="92" selection-end-column="55" />
               <folding />
             </state>
           </provider>
@@ -78,8 +105,8 @@
       <file leaf-file-name="disc_dataloader.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/disc_dataloader.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="411">
-              <caret line="120" column="34" lean-forward="false" selection-start-line="120" selection-start-column="34" selection-end-line="120" selection-end-column="34" />
+            <state relative-caret-position="646">
+              <caret line="168" column="27" lean-forward="false" selection-start-line="168" selection-start-column="22" selection-end-line="168" selection-end-column="27" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
               </folding>
@@ -87,21 +114,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="options.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/options.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="518">
-              <caret line="72" column="50" lean-forward="false" selection-start-line="72" selection-start-column="50" selection-end-line="72" selection-end-column="50" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="data.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="200">
-              <caret line="261" column="41" lean-forward="false" selection-start-line="261" selection-start-column="41" selection-end-line="261" selection-end-column="41" />
+            <state relative-caret-position="-2395">
+              <caret line="256" column="61" lean-forward="false" selection-start-line="256" selection-start-column="61" selection-end-line="256" selection-end-column="61" />
               <folding>
                 <element signature="e#131#148#0" expanded="true" />
               </folding>
@@ -120,12 +137,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>model_file</find>
-      <find>move_eos_to_beginning</find>
-      <find>collater</find>
-      <find>LanguageDatasets</find>
-      <find>new</find>
-      <find>join</find>
       <find>shuffle</find>
       <find>[:</find>
       <find>eval</find>
@@ -141,15 +152,21 @@
       <find>get</find>
       <find>sample_limi</find>
       <find>sample_li</find>
-      <find>valid</find>
       <find>collate_tokens</find>
-      <find>batch</find>
       <find>shuffled_batches_by_size</find>
       <find>maxlen</find>
-      <find>sample</find>
       <find>model</find>
       <find>lr_scheduler</find>
       <find>lr</find>
+      <find>best_dev_loss</find>
+      <find>sample_without_replacement</find>
+      <find>lea</find>
+      <find>batch</find>
+      <find>beam</find>
+      <find>new</find>
+      <find>valid</find>
+      <find>sample</find>
+      <find>clip</find>
     </findStrings>
     <replaceStrings>
       <replace>fixed_max_len</replace>
@@ -163,9 +180,7 @@
       <list>
         <option value="$PROJECT_DIR$/commands.txt" />
         <option value="$PROJECT_DIR$/dictionary.py" />
-        <option value="$PROJECT_DIR$/PGLoss.py" />
         <option value="$PROJECT_DIR$/sequence_generator.py" />
-        <option value="$PROJECT_DIR$/generator.py" />
         <option value="$PROJECT_DIR$/generate.py" />
         <option value="$PROJECT_DIR$/sample_d_data.py" />
         <option value="$PROJECT_DIR$/error_test_model.py" />
@@ -176,13 +191,15 @@
         <option value="$PROJECT_DIR$/discriminator_data.py" />
         <option value="$PROJECT_DIR$/batch_generator.py" />
         <option value="$PROJECT_DIR$/discriminator2.py" />
-        <option value="$PROJECT_DIR$/joint_train.py" />
         <option value="$PROJECT_DIR$/discriminator.py" />
-        <option value="$PROJECT_DIR$/train_generator.py" />
-        <option value="$PROJECT_DIR$/options.py" />
         <option value="$PROJECT_DIR$/data.py" />
-        <option value="$PROJECT_DIR$/disc_dataloader.py" />
         <option value="$PROJECT_DIR$/train_discriminator.py" />
+        <option value="$PROJECT_DIR$/options.py" />
+        <option value="$PROJECT_DIR$/disc_dataloader.py" />
+        <option value="$PROJECT_DIR$/generator.py" />
+        <option value="$PROJECT_DIR$/train_generator.py" />
+        <option value="$PROJECT_DIR$/PGLoss.py" />
+        <option value="$PROJECT_DIR$/joint_train.py" />
       </list>
     </option>
   </component>
@@ -193,9 +210,9 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="992" />
-    <option name="y" value="24" />
-    <option name="width" value="928" />
+    <option name="x" value="158" />
+    <option name="y" value="107" />
+    <option name="width" value="1855" />
     <option name="height" value="1056" />
   </component>
   <component name="ProjectView">
@@ -213,7 +230,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -225,12 +241,13 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scratches" />
       <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Attentional-NMT" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../NMT_GAN" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -274,8 +291,8 @@
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
         <env name="CUDA_VISIBLE_DEVICES" value="0" />
+        <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="$USER_HOME$/anaconda2/envs/py36/bin/python" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
@@ -285,7 +302,7 @@
       <module name="Adversarial-NMT" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/joint_train.py" />
-      <option name="PARAMETERS" value="--data data-bin/iwslt14.tokenized.de-en/ --joint-batch-size 32 --prepare-dis-batch-size 128 --sample-without-replacement 5000 --lr_shrink 0.1 --max-source-positions 50 --max-target-positions 50  --beam 1 --clip-norm 1.0" />
+      <option name="PARAMETERS" value="joint_train.py --data data-bin/iwslt14.tokenized.de-en/  --joint-batch-size 32 --gpuid 0 --clip-norm 1.0 --beam 5" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -318,7 +335,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="992" y="24" width="1855" height="1084" extended-state="6" />
+    <frame x="158" y="107" width="1857" height="1092" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -327,7 +344,7 @@
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15525606" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.14555256" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Docker" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="SciView" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -354,38 +371,13 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/PGLoss.py</url>
-          <line>33</line>
-          <option name="timeStamp" value="57" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/joint_train.py</url>
-          <line>283</line>
-          <option name="timeStamp" value="58" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/train_generator.py</url>
-          <line>141</line>
-          <option name="timeStamp" value="123" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/train_generator.py</url>
-          <line>138</line>
-          <option name="timeStamp" value="124" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/train_generator.py</url>
-          <line>95</line>
+          <line>98</line>
           <option name="timeStamp" value="125" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/train_discriminator.py</url>
-          <line>121</line>
-          <option name="timeStamp" value="151" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/train_discriminator.py</url>
-          <line>151</line>
+          <line>150</line>
           <option name="timeStamp" value="156" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -399,19 +391,19 @@
           <option name="timeStamp" value="162" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/data.py</url>
-          <line>370</line>
-          <option name="timeStamp" value="163" />
+          <url>file://$PROJECT_DIR$/PGLoss.py</url>
+          <line>31</line>
+          <option name="timeStamp" value="176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/data.py</url>
-          <line>255</line>
-          <option name="timeStamp" value="164" />
+          <line>254</line>
+          <option name="timeStamp" value="177" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/data.py</url>
-          <line>393</line>
-          <option name="timeStamp" value="165" />
+          <line>215</line>
+          <option name="timeStamp" value="178" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -421,7 +413,7 @@
           </properties>
         </breakpoint>
       </default-breakpoints>
-      <option name="time" value="166" />
+      <option name="time" value="180" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -440,7 +432,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="456">
           <caret line="24" column="21" lean-forward="false" selection-start-line="24" selection-start-column="12" selection-end-line="24" selection-end-column="21" />
-          <folding />
+          <folding>
+            <element signature="e#0#12#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -477,7 +471,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="114">
           <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="35" />
-          <folding />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -535,7 +531,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -606,17 +604,6 @@
       </provider>
     </entry>
     <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/site-packages/torch/optim/sgd.py" />
-    <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/site-packages/torch/nn/functional.py" />
-    <entry file="file://$PROJECT_DIR$/PGLoss.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="418">
-          <caret line="22" column="40" lean-forward="false" selection-start-line="22" selection-start-column="40" selection-end-line="22" selection-end-column="40" />
-          <folding>
-            <element signature="e#0#12#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sample_d_data.py" />
     <entry file="file://$PROJECT_DIR$/error_test_model.py" />
     <entry file="file://$PROJECT_DIR$/error_test.py" />
@@ -641,14 +628,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/site-packages/torch/nn/modules/module.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="208">
-          <caret line="370" column="0" lean-forward="false" selection-start-line="370" selection-start-column="0" selection-end-line="370" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/generate.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="549">
@@ -664,25 +643,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/generator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1919">
-          <caret line="105" column="0" lean-forward="false" selection-start-line="105" selection-start-column="0" selection-end-line="105" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/indexed_dataset.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="411">
           <caret line="178" column="18" lean-forward="false" selection-start-line="178" selection-start-column="14" selection-end-line="178" selection-end-column="18" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/codecs.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="310" column="0" lean-forward="false" selection-start-line="310" selection-start-column="0" selection-end-line="310" selection-end-column="0" />
         </state>
       </provider>
     </entry>
@@ -705,79 +669,122 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="399">
           <caret line="23" column="33" lean-forward="false" selection-start-line="23" selection-start-column="33" selection-end-line="23" selection-end-column="33" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/options.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="518">
-          <caret line="72" column="50" lean-forward="false" selection-start-line="72" selection-start-column="50" selection-end-line="72" selection-end-column="50" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/train_generator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-76">
-          <caret line="54" column="28" lean-forward="true" selection-start-line="54" selection-start-column="10" selection-end-line="54" selection-end-column="28" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/joint_train.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1767">
-          <caret line="122" column="0" lean-forward="false" selection-start-line="122" selection-start-column="0" selection-end-line="122" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#15#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/batch_generator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-4453">
-          <caret line="82" column="0" lean-forward="false" selection-start-line="82" selection-start-column="0" selection-end-line="82" selection-end-column="0" />
+        <state relative-caret-position="-608">
+          <caret line="57" column="0" lean-forward="true" selection-start-line="57" selection-start-column="0" selection-end-line="57" selection-end-column="0" />
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/data.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="200">
-          <caret line="261" column="41" lean-forward="false" selection-start-line="261" selection-start-column="41" selection-end-line="261" selection-end-column="41" />
-          <folding>
-            <element signature="e#131#148#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/discriminator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="456">
+        <state relative-caret-position="399">
           <caret line="41" column="39" lean-forward="false" selection-start-line="41" selection-start-column="39" selection-end-line="41" selection-end-column="39" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/site-packages/torch/nn/functional.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="246">
+          <caret line="861" column="0" lean-forward="false" selection-start-line="861" selection-start-column="0" selection-end-line="861" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/codecs.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="255">
+          <caret line="310" column="0" lean-forward="false" selection-start-line="310" selection-start-column="0" selection-end-line="310" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/anaconda2/envs/py36/lib/python3.6/site-packages/torch/nn/modules/module.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="200">
+          <caret line="510" column="0" lean-forward="false" selection-start-line="510" selection-start-column="0" selection-end-line="510" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/generator.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1330">
+          <caret line="97" column="74" lean-forward="false" selection-start-line="97" selection-start-column="13" selection-end-line="97" selection-end-column="74" />
+          <folding>
+            <element signature="e#0#12#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/train_generator.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="323">
+          <caret line="132" column="9" lean-forward="false" selection-start-line="123" selection-start-column="8" selection-end-line="132" selection-end-column="9" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/options.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="373">
+          <caret line="92" column="55" lean-forward="false" selection-start-line="92" selection-start-column="25" selection-end-line="92" selection-end-column="55" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/disc_dataloader.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="411">
-          <caret line="120" column="34" lean-forward="false" selection-start-line="120" selection-start-column="34" selection-end-line="120" selection-end-column="34" />
+        <state relative-caret-position="646">
+          <caret line="168" column="27" lean-forward="false" selection-start-line="168" selection-start-column="22" selection-end-line="168" selection-end-column="27" />
           <folding>
             <element signature="e#0#17#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/data.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-2395">
+          <caret line="256" column="61" lean-forward="false" selection-start-line="256" selection-start-column="61" selection-end-line="256" selection-end-column="61" />
+          <folding>
+            <element signature="e#131#148#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/train_discriminator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="468">
-          <caret line="167" column="51" lean-forward="true" selection-start-line="167" selection-start-column="51" selection-end-line="167" selection-end-column="51" />
+        <state relative-caret-position="342">
+          <caret line="126" column="57" lean-forward="false" selection-start-line="126" selection-start-column="50" selection-end-line="126" selection-end-column="57" />
           <folding>
             <element signature="e#0#14#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/joint_train.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="418">
+          <caret line="199" column="41" lean-forward="true" selection-start-line="199" selection-start-column="41" selection-end-line="199" selection-end-column="41" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/PGLoss.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="639">
+          <caret line="40" column="0" lean-forward="false" selection-start-line="40" selection-start-column="0" selection-end-line="40" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>

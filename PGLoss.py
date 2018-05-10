@@ -14,8 +14,9 @@ class PGLoss(torch.nn.Module):
         self.reduce = reduce
 
     def forward(self, logprobs, label, reward, use_cuda):
-        bsz, seqlen, _ = logprobs.size()
-        loss = 0
+        bsz, seqlen = label.size()
+        logprobs = logprobs.view(bsz, seqlen, -1)
+        loss = Variable(logprobs.data.new(1).zero_())
         for i in range(bsz):
             trg_label = label[i,:]
             row_idx = torch.LongTensor(range(seqlen))
@@ -24,12 +25,12 @@ class PGLoss(torch.nn.Module):
             if self.ignore_index != None:
                 logprobs[:, :, self.ignore_index] = 0
             trg_log_prob = logprobs[i, :, :][row_idx, trg_label]
-            trg_log_prob *= reward[i]
+            trg_log_prob.mul_(reward[i])
 
-            loss += -torch.sum(trg_log_prob)
+            loss.add_(torch.sum(trg_log_prob))
 
         if self.size_average:
-            loss /= bsz
+            loss.div_(bsz)
 
 
         # for i in range(seqlen):

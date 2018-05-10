@@ -46,11 +46,9 @@ class LSTMModel(nn.Module):
 
         decoder_out, attn_scores = self.decoder(sample['net_input']['prev_output_tokens'], encoder_out)
         decoder_out = F.log_softmax(decoder_out, dim=2)
-        train_trg_batch = sample['target'].view(-1)
         sys_out_batch = decoder_out.contiguous().view(-1, decoder_out.size(-1))
-        loss = F.nll_loss(sys_out_batch, train_trg_batch, size_average=False, ignore_index=self.dst_dict.pad(),
-                          reduce=True)
-        return loss
+
+        return sys_out_batch
 
     def get_normalized_probs(self, net_output, log_probs):
         """Get normalized probabilities (or log probs) from a net's output."""

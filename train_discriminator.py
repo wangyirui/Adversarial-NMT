@@ -56,7 +56,6 @@ def train_d(args, dataset):
     if use_cuda:
         if torch.cuda.device_count() > 1:
             discriminator = torch.nn.DataParallel(discriminator).cuda()
-            # generator = torch.nn.DataParallel(generator).cuda()
             generator.cuda()
         else:
             generator.cuda()
@@ -164,6 +163,7 @@ def train_d(args, dataset):
             del disc_out, loss, prediction, acc
 
         lr_scheduler.step(logging_meters['valid_loss'].avg)
+        lr = optimizer.param_groups[0]['lr']
 
         if logging_meters['valid_acc'].avg >= 0.70:
             torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}_acc_{1:.3f}.epoch_{2}.pt" \

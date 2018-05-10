@@ -1,16 +1,13 @@
 import argparse
 import logging
 import math
-import dill
 import os
 import options
-import random
-import numpy as np
 from collections import OrderedDict
 
 import torch
 from torch import cuda
-from torch.autograd import Variable
+import torch.nn.functional as F
 
 import data
 import utils
@@ -20,6 +17,9 @@ from generator import LSTMModel
 from train_generator import train_g
 from train_discriminator import train_d
 from PGLoss import PGLoss
+
+from disc_dataloader import DatasetProcessing, prepare_training_data
+from disc_dataloader import train_dataloader, eval_dataloader
 
 
 
@@ -60,18 +60,17 @@ def main(args):
         print('| {} {} {} examples'.format(args.data, split, len(dataset.splits[split])))
 
     g_logging_meters = OrderedDict()
+    g_logging_meters['reward'] = AverageMeter()
     g_logging_meters['train_loss'] = AverageMeter()
     g_logging_meters['valid_loss'] = AverageMeter()
     g_logging_meters['train_acc'] = AverageMeter()
     g_logging_meters['valid_acc'] = AverageMeter()
-    g_logging_meters['bsz'] = AverageMeter()  # sentences per batch
 
     d_logging_meters = OrderedDict()
     d_logging_meters['train_loss'] = AverageMeter()
     d_logging_meters['valid_loss'] = AverageMeter()
     d_logging_meters['train_acc'] = AverageMeter()
     d_logging_meters['valid_acc'] = AverageMeter()
-    d_logging_meters['bsz'] = AverageMeter()  # sentences per batch
 
     # Set model parameters
     args.encoder_embed_dim = 1000
@@ -101,6 +100,7 @@ def main(args):
 
     print("Generator has successfully loaded!")
 
+
     # try to load discriminator model
     d_model_path = 'checkpoints/discriminator/best_dmodel.pt'
     if not os.path.exists(d_model_path):
@@ -115,11 +115,9 @@ def main(args):
     # 2. overwrite entries in the existing state dict
     model_dict.update(pretrained_dict)
     # 3. load the new state dict
-    generator.load_state_dict(model_dict)
+    discriminator.load_state_dict(model_dict)
 
     print("Discriminator has successfully loaded!")
-
-    return
 
     if use_cuda:
         if torch.cuda.device_count() > 1:
@@ -138,9 +136,8 @@ def main(args):
     checkpoints_path = 'checkpoints/joint/'
 
     # define loss function
-    g_criterion = torch.nn.NLLLoss(size_average=False, ignore_index=dataset.dst_dict.pad(),reduce=True)
-    d_criterion = torch.nn.BCELoss()
-    pg_criterion = PGLoss(ignore_index=dataset.dst_dict.pad(), size_average=True,reduce=True)
+    d_criterion = torch.nn.CrossEntropyLoss()
+    pg_criterion = PGLoss(ignore_index=dataset.dst_dict.pad(), size_average=False,reduce=True)
 
     # fix discriminator word embedding (as Wu et al. do)
     for p in discriminator.embed_src_tokens.parameters():
@@ -160,24 +157,25 @@ def main(args):
                                                           nesterov=True)
 
     # start joint training
-    best_dev_loss = math.inf
-    num_update = 0
-    # main training loop
-    for epoch_i in range(1, args.epochs + 1):
-        logging.info("At {0}-th epoch.".format(epoch_i))
+    max_gan_epochs = 20
 
-        # seed = args.seed + epoch_i
-        # torch.manual_seed(seed)
+    best_d_dev_loss = float('inf')
+    best_g_dev_loss = float('inf')
+
+    # main training loop
+    for epoch_i in range(1, max_gan_epochs + 1):
+        # train generator
+        seed = args.seed + 20 + epoch_i # avoid having same seed as pre-train
+        torch.manual_seed(seed)
 
         max_positions_train = (args.fixed_max_len, args.fixed_max_len)
 
-        # Initialize dataloader, starting at batch_offset
         itr = dataset.train_dataloader(
             'train',
             max_tokens=args.max_tokens,
             max_sentences=args.joint_batch_size,
             max_positions=max_positions_train,
-            # seed=seed,
+            seed=seed,
             epoch=epoch_i,
             sample_without_replacement=args.sample_without_replacement,
             sort_by_source_size=(epoch_i <= args.curriculum),
@@ -185,206 +183,184 @@ def main(args):
             num_shards=args.distributed_world_size,
         )
 
+        # set training mode
+        generator.train()
+
         # reset meters
         for key, val in g_logging_meters.items():
             if val is not None:
                 val.reset()
-        for key, val in d_logging_meters.items():
-            if val is not None:
-                val.reset()
-
-        # set training mode
-        generator.train()
-        discriminator.train()
-        update_learning_rate(num_update, 8e4, args.g_learning_rate, args.lr_shrink, g_optimizer)
 
         for i, sample in enumerate(itr):
             if use_cuda:
                 # wrap input tensors in cuda tensors
                 sample = utils.make_variable(sample, cuda=cuda)
 
-            ## part I: use gradient policy method to train the generator
+            # step 1: train generator with PG loss
+            logprobs = -generator(sample)
+            disc_out   = discriminator(sample['net_input']['src_tokens'], sample['target'])
+            reward = F.softmax(disc_out, dim=1)[:, 1]
+            pg_loss = pg_criterion(logprobs, sample['target'], reward, use_cuda)
+            g_optimizer.zero_grad()
+            pg_loss.backward()
+            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), args.clip_norm)
+            g_optimizer.step()
 
-            # use policy gradient training when rand > 50%
-            rand = random.random()
-            if rand >= 0.5:
-                # policy gradient training
-                generator.decoder.is_testing = True
-                sys_out_batch, prediction = generator(sample)
-                generator.decoder.is_testing = False
-                with torch.no_grad():
-                    reward = discriminator(sample['net_input']['src_tokens'], prediction, dataset.dst_dict.pad())
-                train_trg_batch = sample['target']
-                pg_loss = pg_criterion(sys_out_batch, train_trg_batch, reward, use_cuda)
-                # logging.debug("G policy gradient loss at batch {0}: {1:.3f}, lr={2}".format(i, pg_loss.item(), g_optimizer.param_groups[0]['lr']))
-                g_optimizer.zero_grad()
-                pg_loss.backward()
-                torch.nn.utils.clip_grad_norm(generator.parameters(), args.clip_norm)
-                g_optimizer.step()
-
-                # oracle valid
-                sys_out_batch, _ = generator(sample)
-                train_trg_batch = sample['target'].view(-1)
-                sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
-                loss = g_criterion(sys_out_batch, train_trg_batch)
-                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-                logging_loss = loss.data / sample_size / math.log(2)
-                g_logging_meters['train_loss'].update(logging_loss, sample_size)
-                logging.debug("G MLE loss at batch {0}: {1:.3f}, lr={2}".format(i, g_logging_meters['train_loss'].avg,
-                                                                                g_optimizer.param_groups[0]['lr']))
-            else:
-                # MLE training
-                sys_out_batch, _ = generator(sample)
-                train_trg_batch = sample['target'].view(-1)
-                sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
-                loss = g_criterion(sys_out_batch, train_trg_batch)
-                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-                nsentences = sample['target'].size(0)
-                logging_loss = loss.data / sample_size / math.log(2)
-                g_logging_meters['bsz'].update(nsentences)
-                g_logging_meters['train_loss'].update(logging_loss, sample_size)
-                logging.debug("G MLE loss at batch {0}: {1:.3f}, lr={2}".format(i, g_logging_meters['train_loss'].avg,
-                                                                                           g_optimizer.param_groups[0]['lr']))
-                g_optimizer.zero_grad()
-                loss.backward()
-                # all-reduce grads and rescale by grad_denom
-                for p in generator.parameters():
-                    if p.requires_grad:
-                        p.grad.data.div_(sample_size)
-                torch.nn.utils.clip_grad_norm(generator.parameters(), args.clip_norm)
-                g_optimizer.step()
-            num_update += 1
-
-
-            # part II: train the discriminator
-            bsz = sample['target'].size(0)
-            src_sentence = sample['net_input']['src_tokens']
-            # train with half human-translation and half machine translation
-
-            true_sentence = sample['target']
-            true_labels = Variable(torch.ones(sample['target'].size(0)).float())
-
-            with torch.no_grad():
-                generator.decoder.is_testing = True
-                _, prediction = generator(sample)
-                generator.decoder.is_testing = False
-            fake_sentence = prediction
-            fake_labels = Variable(torch.zeros(sample['target'].size(0)).float())
-
-            trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
-            labels = torch.cat([true_labels, fake_labels], dim=0)
-
-            indices = np.random.permutation(2 * bsz)
-            trg_sentence = trg_sentence[indices][:bsz]
-            labels = labels[indices][:bsz]
-
-            if use_cuda:
-                labels = labels.cuda()
-
-            disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
-            d_loss = d_criterion(disc_out, labels)
-            acc = torch.sum(torch.round(disc_out).squeeze(1) == labels).float() / len(labels)
-            d_logging_meters['train_acc'].update(acc)
-            d_logging_meters['train_loss'].update(d_loss)
-            # logging.debug("D training loss {0:.3f}, acc {1:.3f} at batch {2}: ".format(d_logging_meters['train_loss'].avg,
-            #                                                                            d_logging_meters['train_acc'].avg,
-            #                                                                            i))
-            d_optimizer.zero_grad()
-            d_loss.backward()
-            d_optimizer.step()
-
+            # step 2: train generator with MLE
+            train_trg_batch = sample['target'].view(-1)
+            sys_out_batch = generator(sample)
+            mle_loss = F.nll_loss(sys_out_batch, train_trg_batch, size_average=False, ignore_index=dataset.dst_dict.pad(), reduce=True)
+            sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
+            logging_loss = mle_loss.item() / sample_size / math.log(2)
+            g_logging_meters['train_loss'].update(logging_loss, sample_size)
+            logging.debug("g loss at batch {0}: {1:.3f}, lr={3}".format(i, g_logging_meters['train_loss'].avg,
+                                                                        torch.mean(reward),
+                                                                        g_optimizer.param_groups[0]['lr']))
+            g_optimizer.zero_grad()
+            mle_loss.backward()
+            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), args.clip_norm)
+            g_optimizer.step()
 
 
         # validation
-        # set validation mode
-        generator.eval()
-        discriminator.eval()
-        # Initialize dataloader
+        # validation -- this is a crude estimation because there might be some padding at the end
         max_positions_valid = (args.fixed_max_len, args.fixed_max_len)
+
+        # Initialize dataloader
         itr = dataset.eval_dataloader(
             'valid',
             max_tokens=args.max_tokens,
-            max_sentences=args.joint_batch_size,
+            max_sentences=args.prepare_dis_batch_size,
             max_positions=max_positions_valid,
             skip_invalid_size_inputs_valid_test=True,
             descending=True,  # largest batch first to warm the caching allocator
             shard_id=args.distributed_rank,
             num_shards=args.distributed_world_size,
         )
+        # set validation mode
+        generator.eval()
 
         # reset meters
         for key, val in g_logging_meters.items():
             if val is not None:
                 val.reset()
+        with torch.no_grad():
+            for i, sample in enumerate(itr):
+                if use_cuda:
+                    # wrap input tensors in cuda tensors
+                    sample = utils.make_variable(sample, cuda=cuda)
+                val_trg_batch = sample['target'].view(-1)
+                sys_out_batch = generator(sample)
+                loss = F.nll_loss(sys_out_batch, val_trg_batch, size_average=False, ignore_index=dataset.dst_dict.pad(), reduce=True)
+                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
+                loss = loss.item() / sample_size / math.log(2)
+                g_logging_meters['valid_loss'].update(loss, sample_size)
+                logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, g_logging_meters['valid_loss'].avg))
+
+
+        logging.info(
+            "Average g loss value per instance is {0} at the end of epoch {1}".format(
+                g_logging_meters['valid_loss'].avg,
+                epoch_i))
+        torch.save(generator.state_dict(), open(
+            checkpoints_path + "g.nll_{0:.3f}.epoch_{1}.pt".format(g_logging_meters['valid_loss'].avg, epoch_i),
+            'wb'))
+
+        if g_logging_meters['valid_loss'].avg < best_g_dev_loss:
+            best_g_dev_loss = g_logging_meters['valid_loss'].avg
+            torch.save(generator.state_dict(), open(checkpoints_path + "best_gmodel.pt", 'wb'))
+
+
+
+        # train discriminator
+        # sample is controlled by args.d_sample_without_replacement
+        train = prepare_training_data(args, dataset, 'train', generator, epoch_i, use_cuda)
+        valid = prepare_training_data(args, dataset, 'valid', generator, epoch_i, use_cuda)
+        data_train = DatasetProcessing(data=train, maxlen=args.fixed_max_len)
+        data_valid = DatasetProcessing(data=valid, maxlen=args.fixed_max_len)
+
+        seed = args.seed + epoch_i
+        torch.manual_seed(seed)
+
+        # discriminator training dataloader
+        train_loader = train_dataloader(data_train, batch_size=args.joint_batch_size,
+                                        seed=seed, epoch=epoch_i, sort_by_source_size=False)
+
+        valid_loader = eval_dataloader(data_valid, num_workers=4, batch_size=args.joint_batch_size)
+
+        # set training mode
+        discriminator.train()
+
+        # set generator as eval
+        generator.eval()
+
+        # reset meters
         for key, val in d_logging_meters.items():
             if val is not None:
                 val.reset()
 
-        for i, sample in enumerate(itr):
-            with torch.no_grad():
-                if use_cuda:
-                    sample['id'] = sample['id'].cuda()
-                    sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].cuda()
-                    sample['net_input']['src_lengths'] = sample['net_input']['src_lengths'].cuda()
-                    sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].cuda()
-                    sample['target'] = sample['target'].cuda()
+        for i, sample in enumerate(train_loader):
+            if use_cuda:
+                # wrap input tensors in cuda tensors
+                sample = utils.make_variable(sample, cuda=use_cuda)
 
-                # generator validation
-                sys_out_batch, _ = generator(sample)
-                dev_trg_batch = sample['target'].view(-1)
-                sys_out_batch = sys_out_batch.contiguous().view(-1, sys_out_batch.size(-1))
-                loss = g_criterion(sys_out_batch, dev_trg_batch)
-                sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-                loss = loss / sample_size / math.log(2)
-                g_logging_meters['valid_loss'].update(loss, sample_size)
-                logging.debug("G dev loss at batch {0}: {1:.3f}".format(i, g_logging_meters['valid_loss'].avg))
+            disc_out = discriminator(sample['src_tokens'], sample['trg_tokens'])
 
-                # discriminator validation
-                bsz = sample['target'].size(0)
-                src_sentence = sample['net_input']['src_tokens']
-                # train with half human-translation and half machine translation
+            loss = d_criterion(disc_out, sample['labels'])
+            _, prediction = F.softmax(disc_out, dim=1).topk(1)
+            acc = torch.sum(prediction == sample['labels'].unsqueeze(1)).float() / len(sample['labels'])
 
-                true_sentence = sample['target']
-                true_labels = Variable(torch.ones(sample['target'].size(0)).float())
+            d_logging_meters['train_acc'].update(acc.item())
+            d_logging_meters['train_loss'].update(loss.item())
+            logging.debug("D training loss {0:.3f}, acc {1:.3f}, avgAcc {2:.3f}, lr={3} at batch {4}: ". \
+                          format(d_logging_meters['train_loss'].avg, acc, d_logging_meters['train_acc'].avg,
+                                 d_optimizer.param_groups[0]['lr'], i))
 
+            d_optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), args.clip_norm)
+            d_optimizer.step()
+
+            # del src_tokens, trg_tokens, loss, disc_out, labels, prediction, acc
+            del disc_out, loss, prediction, acc
+
+
+        # validation
+        # set validation mode
+        discriminator.eval()
+        with torch.no_grad():
+            for i, sample in enumerate(valid_loader):
                 with torch.no_grad():
-                    generator.decoder.is_testing = True
-                    _, prediction = generator(sample)
-                    generator.decoder.is_testing = False
-                fake_sentence = prediction
-                fake_labels = Variable(torch.zeros(sample['target'].size(0)).float())
+                    if use_cuda:
+                        # wrap input tensors in cuda tensors
+                        sample = utils.make_variable(sample, cuda=use_cuda)
 
-                trg_sentence = torch.cat([true_sentence, fake_sentence], dim=0)
-                labels = torch.cat([true_labels, fake_labels], dim=0)
+                    disc_out = discriminator(sample['src_tokens'], sample['trg_tokens'])
 
-                indices = np.random.permutation(2 * bsz)
-                trg_sentence = trg_sentence[indices][:bsz]
-                labels = labels[indices][:bsz]
+                    loss = d_criterion(disc_out, sample['labels'])
+                    _, prediction = F.softmax(disc_out, dim=1).topk(1)
+                    acc = torch.sum(prediction == sample['labels'].unsqueeze(1)).float() / len(sample['labels'])
 
-                if use_cuda:
-                    labels = labels.cuda()
+                    d_logging_meters['valid_acc'].update(acc.item())
+                    d_logging_meters['valid_loss'].update(loss.item())
+                    logging.debug("D eval loss {0:.3f}, acc {1:.3f}, avgAcc {2:.3f}, lr={3} at batch {4}: ". \
+                                  format(d_logging_meters['valid_loss'].avg, acc, d_logging_meters['valid_acc'].avg,
+                                         d_optimizer.param_groups[0]['lr'], i))
 
-                disc_out = discriminator(src_sentence, trg_sentence, dataset.dst_dict.pad())
-                d_loss = d_criterion(disc_out, labels)
-                acc = torch.sum(torch.round(disc_out).squeeze(1) == labels).float() / len(labels)
-                d_logging_meters['valid_acc'].update(acc)
-                d_logging_meters['valid_loss'].update(d_loss)
-                # logging.debug("D dev loss {0:.3f}, acc {1:.3f} at batch {2}".format(d_logging_meters['valid_loss'].avg,
-                #                                                                     d_logging_meters['valid_acc'].avg, i))
-
-        torch.save(generator,
-                   open(checkpoints_path + "joint_{0:.3f}.epoch_{1}.pt".format(g_logging_meters['valid_loss'].avg, epoch_i),
-                        'wb'), pickle_module=dill)
-
-        if g_logging_meters['valid_loss'].avg < best_dev_loss:
-            best_dev_loss = g_logging_meters['valid_loss'].avg
-            torch.save(generator, open(checkpoints_path + "best_gmodel.pt", 'wb'), pickle_module=dill)
+                del disc_out, loss, prediction, acc
 
 
-def update_learning_rate(update_times, target_times, init_lr, lr_shrink, optimizer):
-    lr = init_lr * (lr_shrink ** (update_times // target_times))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+
+        torch.save(discriminator.state_dict(), checkpoints_path + "d_ce_{0:.3f}_acc_{1:.3f}.epoch_{2}.pt" \
+                       .format(d_logging_meters['valid_loss'].avg, d_logging_meters['valid_acc'].avg, epoch_i))
+
+        if d_logging_meters['valid_loss'].avg < best_d_dev_loss:
+            best_d_dev_loss = d_logging_meters['valid_loss'].avg
+            torch.save(discriminator.state_dict(), checkpoints_path + "best_dmodel.pt")
+
+
+
+
 
 if __name__ == "__main__":
   ret = parser.parse_known_args()
