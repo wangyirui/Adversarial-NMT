@@ -4,3 +4,8 @@ python generate.py --data data/ --batch-size 128 --model_name luong-nmt --model_
 python train.py --data data/ --optimizer Adam --learning_rate 1e-3 --lr_shrink_from 8 --model_name luong-nmt --gpuid 0 --epochs 20
 
 python joint_train.py --data data-bin/iwslt14.tokenized.de-en/  --learning_rate 1e-3 --joint-batch-size 32 --gpuid 0 --clip-norm 1.0 --epochs 10
+
+python generate.py --data data-bin/wmt14.en-de/ --batch-size 128 --model_file checkpoints/generator/best_gmodel.pt --gpuid 0 --remove-bpe --beam 10
+
+
+perl scripts/multi-bleu.perl < ground_truth.txt translation.txt

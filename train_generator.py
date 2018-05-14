@@ -143,8 +143,8 @@ def train_g(args, dataset):
                 sys_out_batch = generator(sample)
                 loss = F.nll_loss(sys_out_batch, val_trg_batch, size_average=False, ignore_index=dataset.dst_dict.pad(), reduce=True)
                 sample_size = sample['target'].size(0) if args.sentence_avg else sample['ntokens']
-                loss = loss.item() / sample_size / math.log(2)
-                logging_meters['valid_loss'].update(loss, sample_size)
+                logging_loss = loss.item() / sample_size / math.log(2)
+                logging_meters['valid_loss'].update(logging_loss, sample_size)
                 logging.debug("g dev loss at batch {0}: {1:.3f}".format(i, logging_meters['valid_loss'].avg))
 
                 del sys_out_batch, loss
