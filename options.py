@@ -66,7 +66,7 @@ def add_optimization_args(parser):
                         help="Learning rate of the generator. (default=0.001)")
     parser.add_argument("--d_learning_rate", "-dlr", default=1e-3, type=float,
                         help="Learning rate of the discriminator. (default=0.001)")
-    parser.add_argument("--lr_shrink", default=0.5, type=float,
+    parser.add_argument("--lr_shrink", default=0.1, type=float,
                         help='learning rate shrink factor, lr_new = (lr * lr_shrink)')
     parser.add_argument('--min-g-lr', default=1e-5, type=float, metavar='LR',
                         help='minimum learning rate')

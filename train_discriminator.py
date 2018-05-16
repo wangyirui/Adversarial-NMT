@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader,Dataset
 
 import utils
 from meters import AverageMeter
-from discriminator import Discriminator
+from discriminator2 import Discriminator
 # from discriminator2 import Discriminator
 from generator import LSTMModel
 from disc_dataloader import DatasetProcessing, prepare_training_data
