@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import data
 import utils
 from meters import AverageMeter
-from discriminator import Discriminator
+from discriminator2 import Discriminator
 from generator import LSTMModel
 from train_generator import train_g
 from train_discriminator import train_d
