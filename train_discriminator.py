@@ -66,10 +66,10 @@ def train_d(args, dataset):
 
     criterion = torch.nn.CrossEntropyLoss()
 
-    # optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()),
-    #                                                     args.d_learning_rate, momentum=args.momentum, nesterov=True)
+    optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()),
+                                                        args.d_learning_rate, momentum=args.momentum, nesterov=True)
 
-    optimizer = torch.optim.RMSprop(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-4)
+    # optimizer = torch.optim.RMSprop(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-4)
 
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, factor=args.lr_shrink)
 
