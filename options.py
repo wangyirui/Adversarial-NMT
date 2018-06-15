@@ -86,11 +86,11 @@ def add_optimization_args(parser):
                        help='If bigger than 0, use that number of mini-batches for each epoch,'
                             ' where each sample is drawn randomly without replacement from the'
                             ' dataset')
-    parser.add_argument('--g_sample-without-replacement', default=0, type=int, metavar='N',
+    parser.add_argument('--g-sample-without-replacement', default=0, type=int, metavar='N',
                         help='If bigger than 0, use that number of mini-batches for each epoch,'
                              ' where each generator sample is drawn randomly without replacement from the'
                              ' dataset')
-    parser.add_argument('--d_sample-without-replacement', default=0, type=int, metavar='N',
+    parser.add_argument('--d-sample-without-replacement', default=0, type=int, metavar='N',
                         help='If bigger than 0, use that number of mini-batches for each epoch,'
                              ' where each discriminator sample is drawn randomly without replacement from the'
                              ' dataset')

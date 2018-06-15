@@ -19,18 +19,26 @@ class Discriminator(nn.Module):
 
 
         self.conv1 = nn.Sequential(
-            Conv2d(in_channels=2000,
-                   out_channels=512,
+            Conv2d(in_channels=1,
+                   out_channels=32,
+                   kernel_size=(3, 1000),
+                   stride=(1, 1000),
+                   padding=1)
+        )
+
+        self.conv2 = nn.Sequential(
+            Conv2d(in_channels=64,
+                   out_channels=128,
                    kernel_size=3,
                    stride=1,
                    padding=1),
-            nn.BatchNorm2d(512),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
-        self.conv2 = nn.Sequential(
-            Conv2d(in_channels=512,
+        self.conv3 = nn.Sequential(
+            Conv2d(in_channels=128,
                    out_channels=256,
                    kernel_size=3,
                    stride=1,
@@ -43,10 +51,10 @@ class Discriminator(nn.Module):
         self.classifier = nn.Sequential(
             nn.Dropout(),
             Linear(256 * 12 * 12, 20),
-            nn.ReLU(),
+            #nn.ReLU(),
+            # Linear(20, 20),
+            # nn.ReLU(),
             nn.Dropout(),
-            Linear(20, 20),
-            nn.ReLU(),
             Linear(20, 2),
         )
 
@@ -54,17 +62,23 @@ class Discriminator(nn.Module):
         batch_size = src_sentence.size(0)
 
         src_out = self.embed_src_tokens(src_sentence)
+        src_out = src_out.unsqueeze(1)
         trg_out = self.embed_src_tokens(trg_sentence)
+        trg_out = trg_out.unsqueeze(1)
 
-        src_out = torch.stack([src_out] * trg_out.size(1), dim=2)
-        trg_out = torch.stack([trg_out] * src_out.size(1), dim=1)
-        out = torch.cat([src_out, trg_out], dim=3)
-        out = out.permute(0,3,1,2)
+        out1 = self.conv1(src_out)
+        out1 = out1.squeeze(3)
+        out2 = self.conv1(trg_out)
+        out2 = out2.squeeze(3)
 
-        out = self.conv1(out)
+        out1 = torch.stack([out1] * out2.size(2), dim=3)
+        out2 = torch.stack([out2] * out1.size(2), dim=2)
+        out = torch.cat([out1, out2], dim=1)
+
         out = self.conv2(out)
-        out = out.permute(0, 2, 3, 1)
-        out = out.contiguous().view(batch_size, -1)
+        out = self.conv3(out)
+        out = out.contiguous().view(out.size(0), -1)
+
         out = self.classifier(out)
 
         return out

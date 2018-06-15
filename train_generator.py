@@ -9,7 +9,8 @@ import torch.nn.functional as F
 
 import utils
 from meters import AverageMeter
-from generator import LSTMModel
+from generator import RNNModel
+# from generator2 import RNNModel
 
 
 def train_g(args, dataset):
@@ -32,7 +33,7 @@ def train_g(args, dataset):
     logging_meters['update_times'] = AverageMeter()
 
     # Build model
-    generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+    generator = RNNModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
 
     if use_cuda:
         if torch.cuda.device_count() > 1:
@@ -42,7 +43,7 @@ def train_g(args, dataset):
     else:
         generator.cpu()
 
-    optimizer = eval("torch.optim." + args.optimizer)(generator.parameters(), args.learning_rate)
+    optimizer = eval("torch.optim." + args.g_optimizer)(generator.parameters(), args.learning_rate)
 
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, factor=args.lr_shrink)
 
@@ -108,7 +109,7 @@ def train_g(args, dataset):
                 if p.requires_grad:
                     p.grad.data.div_(sample_size)
 
-            torch.nn.utils.clip_grad_norm_(generator.parameters(), args.clip_norm)
+            torch.nn.utils.clip_grad_norm_(generator.parameters(), 5.0)
             optimizer.step()
 
             del sys_out_batch, loss

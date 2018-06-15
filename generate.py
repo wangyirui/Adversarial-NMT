@@ -5,7 +5,8 @@ import torch
 from torch import cuda
 import options
 import data
-from generator import LSTMModel
+from generator2 import RNNModel
+# from generator import RNNModel
 
 from sequence_generator import SequenceGenerator
 
@@ -25,47 +26,57 @@ options.add_generator_model_args(parser)
 
 def main(args):
 
-  use_cuda = (len(args.gpuid) >= 1)
-  if args.gpuid:
-    cuda.set_device(args.gpuid[0])
+  use_cuda = (torch.cuda.device_count() >= 1)
 
-    # Load dataset
-    if args.replace_unk is None:
-      dataset = data.load_dataset(
-        args.data,
-        ['test'],
-        args.src_lang,
-        args.trg_lang,
-      )
-    else:
-      dataset = data.load_raw_text_dataset(
-        args.data,
-        ['test'],
-        args.src_lang,
-        args.trg_lang,
-      )
+  # Load dataset
+  if args.replace_unk is None:
+    dataset = data.load_dataset(
+      args.data,
+      ['test'],
+      args.src_lang,
+      args.trg_lang,
+    )
+  else:
+    dataset = data.load_raw_text_dataset(
+      args.data,
+      ['test'],
+      args.src_lang,
+      args.trg_lang,
+    )
 
 
-    if args.src_lang is None or args.trg_lang is None:
-      # record inferred languages in args, so that it's saved in checkpoints
-      args.src_lang, args.trg_lang = dataset.src, dataset.dst
+  if args.src_lang is None or args.trg_lang is None:
+    # record inferred languages in args, so that it's saved in checkpoints
+    args.src_lang, args.trg_lang = dataset.src, dataset.dst
 
-    print('| [{}] dictionary: {} types'.format(dataset.src, len(dataset.src_dict)))
-    print('| [{}] dictionary: {} types'.format(dataset.dst, len(dataset.dst_dict)))
-    print('| {} {} {} examples'.format(args.data, 'test', len(dataset.splits['test'])))
+  print('| [{}] dictionary: {} types'.format(dataset.src, len(dataset.src_dict)))
+  print('| [{}] dictionary: {} types'.format(dataset.dst, len(dataset.dst_dict)))
+  print('| {} {} {} examples'.format(args.data, 'test', len(dataset.splits['test'])))
 
   # Set model parameters
-  args.encoder_embed_dim = 1000
-  args.encoder_layers = 4
+  # args.encoder_embed_dim = 1000
+  # args.encoder_layers = 4
+  # args.encoder_dropout_out = 0
+  # args.decoder_embed_dim = 1000
+  # args.decoder_layers = 4
+  # args.decoder_out_embed_dim = 1000
+  # args.decoder_dropout_out = 0
+  # args.bidirectional = False
+
+  args.encoder_embed_dim = 256
+  args.encoder_layers = 1
+  args.encoder_dropout_in = 0
   args.encoder_dropout_out = 0
-  args.decoder_embed_dim = 1000
-  args.decoder_layers = 4
-  args.decoder_out_embed_dim = 1000
+  args.decoder_embed_dim = 256
+  args.decoder_layers = 1
+  args.decoder_out_embed_dim = 256
+  args.decoder_dropout_in = 0
   args.decoder_dropout_out = 0
-  args.bidirectional = False
+  args.bidirectional = args.bidirectional
 
   # Build model
-  generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+  # generator = RNNModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+  generator = RNNModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
   model_dict = generator.state_dict()
   pretrained_dict = torch.load(args.model_file)
   # 1. filter out unnecessary keys
@@ -75,7 +86,7 @@ def main(args):
   # 3. load the new state dict
   generator.load_state_dict(model_dict)
 
-  if use_cuda > 0:
+  if use_cuda:
     generator.cuda()
   else:
     generator.cpu()

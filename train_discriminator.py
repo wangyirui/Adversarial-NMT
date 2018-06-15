@@ -12,8 +12,9 @@ from torch.utils.data import DataLoader,Dataset
 import utils
 from meters import AverageMeter
 from discriminator2 import Discriminator
-# from discriminator2 import Discriminator
-from generator import LSTMModel
+# from discriminator import Discriminator
+# from generator import RNNModel
+from generator2 import RNNModel
 from disc_dataloader import DatasetProcessing, prepare_training_data
 from disc_dataloader import train_dataloader, eval_dataloader
 
@@ -43,7 +44,7 @@ def train_d(args, dataset):
 
     # Load generator
     assert os.path.exists('checkpoints/generator/best_gmodel.pt')
-    generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+    generator = RNNModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
     model_dict = generator.state_dict()
     pretrained_dict = torch.load('checkpoints/generator/best_gmodel.pt')
     # 1. filter out unnecessary keys
@@ -69,14 +70,14 @@ def train_d(args, dataset):
     optimizer = eval("torch.optim." + args.d_optimizer)(filter(lambda x: x.requires_grad, discriminator.parameters()),
                                                         args.d_learning_rate, momentum=args.momentum, nesterov=True)
 
-    # optimizer = torch.optim.RMSprop(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-4)
+    # optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, discriminator.parameters()), 1e-3)
 
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=0, factor=args.lr_shrink)
 
     # Train until the accuracy achieve the define value
     max_epoch = args.max_epoch or math.inf
     epoch_i = 1
-    trg_acc = 0.82
+    trg_acc = 0.8
     best_dev_loss = math.inf
     lr = optimizer.param_groups[0]['lr']
 
@@ -132,7 +133,7 @@ def train_d(args, dataset):
 
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm(discriminator.parameters(), args.clip_norm)
+            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), args.clip_norm)
             optimizer.step()
 
             # del src_tokens, trg_tokens, loss, disc_out, labels, prediction, acc
@@ -162,8 +163,8 @@ def train_d(args, dataset):
 
             del disc_out, loss, prediction, acc
 
-        lr_scheduler.step(logging_meters['valid_loss'].avg)
-        lr = optimizer.param_groups[0]['lr']
+        #lr_scheduler.step(logging_meters['valid_loss'].avg)
+        #lr = optimizer.param_groups[0]['lr']
 
         if logging_meters['valid_acc'].avg >= 0.70:
             torch.save(discriminator.state_dict(), checkpoints_path + "ce_{0:.3f}_acc_{1:.3f}.epoch_{2}.pt" \

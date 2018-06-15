@@ -12,8 +12,10 @@ import torch.nn.functional as F
 import data
 import utils
 from meters import AverageMeter
+# from discriminator import Discriminator
 from discriminator2 import Discriminator
-from generator import LSTMModel
+from generator import RNNModel
+# from generator2 import RNNModel
 from train_generator import train_g
 from train_discriminator import train_d
 from PGLoss import PGLoss
@@ -73,14 +75,25 @@ def main(args):
     d_logging_meters['valid_acc'] = AverageMeter()
 
     # Set model parameters
-    args.encoder_embed_dim = 1000
-    args.encoder_layers = 4
+    # args.encoder_embed_dim = 1000
+    # args.encoder_layers = 4
+    # args.encoder_dropout_out = 0
+    # args.decoder_embed_dim = 1000
+    # args.decoder_layers = 4
+    # args.decoder_out_embed_dim = 1000
+    # args.decoder_dropout_out = 0
+    # args.bidirectional = False
+
+    args.encoder_embed_dim = 256
+    args.encoder_layers = 1
+    args.encoder_dropout_in = 0
     args.encoder_dropout_out = 0
-    args.decoder_embed_dim = 1000
-    args.decoder_layers = 4
-    args.decoder_out_embed_dim = 1000
+    args.decoder_embed_dim = 256
+    args.decoder_layers = 1
+    args.decoder_out_embed_dim = 256
+    args.decoder_dropout_in = 0
     args.decoder_dropout_out = 0
-    args.bidirectional = False
+    args.bidirectional = True
 
     # try to load generator model
     g_model_path = 'checkpoints/generator/best_gmodel.pt'
@@ -88,7 +101,7 @@ def main(args):
         print("Start training generator!")
         train_g(args, dataset)
     assert os.path.exists(g_model_path)
-    generator = LSTMModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
+    generator = RNNModel(args, dataset.src_dict, dataset.dst_dict, use_cuda=use_cuda)
     model_dict = generator.state_dict()
     pretrained_dict = torch.load(g_model_path)
     # 1. filter out unnecessary keys
